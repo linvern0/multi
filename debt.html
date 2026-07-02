@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qarzdorlar Portali</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #3f37c9;
+            --success: #06d6a0;
+            --danger: #ef476f;
+            --warning: #ffd166;
+            --info: #118ab2;
+            --dark: #073b4c;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --white: #ffffff;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --radius: 12px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            color: var(--dark);
+            min-height: 100vh;
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; color: white;
+        }
+        .loading-screen .spinner {
+            width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Login Screen */
+        .login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: none; align-items: center; justify-content: center; z-index: 9998;
+        }
+        .login-screen.active { display: flex; }
+        .login-card {
+            background: white; border-radius: var(--radius); padding: 40px;
+            width: 90%; max-width: 400px; box-shadow: var(--shadow); text-align: center;
+        }
+        .login-card h2 { margin-bottom: 10px; color: var(--dark); }
+        .login-card p { color: var(--gray); margin-bottom: 25px; font-size: 14px; }
+        .login-card .icon {
+            font-size: 50px; margin-bottom: 15px;
+        }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: var(--dark); }
+        .form-input {
+            width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px;
+            font-size: 14px; outline: none; transition: border-color 0.3s;
+        }
+        .form-input:focus { border-color: var(--primary); }
+        .login-btn {
+            width: 100%; padding: 15px; background: var(--primary); color: white;
+            border: none; border-radius: 8px; font-size: 16px; font-weight: 600;
+            cursor: pointer; margin-top: 15px; transition: background 0.3s;
+        }
+        .login-btn:hover { background: var(--primary-dark); }
+        .login-error { color: var(--danger); margin-top: 10px; font-size: 14px; display: none; }
+
+        /* Dashboard */
+        .dashboard { display: none; }
+        .dashboard.active { display: block; }
+
+        .header {
+            background: white; padding: 15px 20px; box-shadow: var(--shadow);
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .header h1 { font-size: 18px; color: var(--primary); }
+        .header .user-info { display: flex; align-items: center; gap: 10px; }
+        .header .user-badge {
+            background: #eef1ff; color: var(--primary); padding: 5px 12px;
+            border-radius: 20px; font-size: 12px; font-weight: 600;
+        }
+        .logout-btn {
+            background: none; border: none; color: var(--danger);
+            cursor: pointer; font-size: 14px; font-weight: 600;
+            padding: 8px 12px; border-radius: 8px; transition: background 0.3s;
+        }
+        .logout-btn:hover { background: #ffeef2; }
+
+        .content { padding: 20px; max-width: 900px; margin: 0 auto; }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px; margin-bottom: 25px;
+        }
+        .stat-card {
+            background: white; border-radius: var(--radius); padding: 18px;
+            box-shadow: var(--shadow); text-align: center;
+        }
+        .stat-card.red { border-top: 4px solid var(--danger); }
+        .stat-card.green { border-top: 4px solid var(--success); }
+        .stat-card.blue { border-top: 4px solid var(--info); }
+        .stat-card.orange { border-top: 4px solid var(--warning); }
+        .stat-value { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+        .stat-card.red .stat-value { color: var(--danger); }
+        .stat-card.green .stat-value { color: var(--success); }
+        .stat-card.blue .stat-value { color: var(--info); }
+        .stat-card.orange .stat-value { color: #e67e22; }
+        .stat-label { font-size: 12px; color: var(--gray); }
+
+        /* Overall Progress */
+        .overall-progress {
+            background: white; border-radius: var(--radius); padding: 20px;
+            box-shadow: var(--shadow); margin-bottom: 25px;
+        }
+        .overall-progress h3 { font-size: 16px; margin-bottom: 12px; color: var(--dark); }
+        .progress-bar-container {
+            background: #e9ecef; border-radius: 10px; height: 20px;
+            overflow: hidden; position: relative;
+        }
+        .progress-bar-fill {
+            height: 100%; border-radius: 10px;
+            background: linear-gradient(90deg, var(--success), #00c897);
+            transition: width 0.5s ease; min-width: 0;
+        }
+        .progress-text {
+            display: flex; justify-content: space-between; margin-top: 8px;
+            font-size: 13px; color: var(--gray);
+        }
+
+        /* Section Title */
+        .section-title {
+            font-size: 18px; font-weight: 600; margin-bottom: 15px;
+            color: var(--dark); display: flex; align-items: center; gap: 8px;
+        }
+
+        /* Debt Cards */
+        .debt-card {
+            background: white; border-radius: var(--radius); padding: 20px;
+            box-shadow: var(--shadow); margin-bottom: 15px;
+            border-left: 4px solid var(--primary);
+        }
+        .debt-card.paid { border-left-color: var(--success); opacity: 0.8; }
+        .debt-card-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        .debt-card-date { font-size: 13px; color: var(--gray); }
+        .debt-card-person {
+            font-size: 12px; color: var(--primary); font-weight: 600;
+            background: #eef1ff; padding: 3px 8px; border-radius: 12px;
+        }
+        .debt-card-status {
+            font-size: 11px; font-weight: 600; padding: 4px 10px;
+            border-radius: 12px;
+        }
+        .debt-card-status.active { background: #fff3cd; color: #856404; }
+        .debt-card-status.partial { background: #d1ecf1; color: #0c5460; }
+        .debt-card-status.paid { background: #d4edda; color: #155724; }
+
+        .debt-items { margin: 12px 0; }
+        .debt-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 0; font-size: 13px; border-bottom: 1px solid #f5f5f5;
+        }
+        .debt-item:last-child { border-bottom: none; }
+        .debt-item-name { color: var(--dark); }
+        .debt-item-detail { color: var(--gray); font-size: 12px; }
+        .debt-item-price { font-weight: 600; color: var(--dark); }
+
+        .debt-card-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-top: 12px; border-top: 1px solid #f0f0f0;
+        }
+        .debt-amount { font-size: 16px; font-weight: 700; color: var(--dark); }
+        .debt-remaining { font-size: 13px; color: var(--danger); font-weight: 600; }
+        .debt-remaining.paid-full { color: var(--success); }
+
+        .debt-progress {
+            margin-top: 10px;
+        }
+        .debt-progress-bar {
+            background: #e9ecef; border-radius: 6px; height: 8px;
+            overflow: hidden;
+        }
+        .debt-progress-fill {
+            height: 100%; border-radius: 6px;
+            background: linear-gradient(90deg, var(--success), #00c897);
+            transition: width 0.5s ease;
+        }
+        .debt-progress-text {
+            display: flex; justify-content: space-between; margin-top: 4px;
+            font-size: 11px; color: var(--gray);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center; padding: 60px 20px; color: var(--gray);
+        }
+        .empty-state .icon { font-size: 60px; margin-bottom: 15px; opacity: 0.5; }
+        .empty-state p { font-size: 16px; }
+
+        /* Note */
+        .debt-note {
+            background: #f8f9fa; padding: 8px 12px; border-radius: 6px;
+            font-size: 12px; color: var(--gray); margin-top: 8px;
+            font-style: italic;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .stat-card { padding: 12px; }
+            .stat-value { font-size: 18px; }
+            .content { padding: 15px; }
+            .login-card { padding: 30px 20px; }
+            .header h1 { font-size: 16px; }
+            .debt-card { padding: 15px; }
+            .debt-card-header { flex-direction: column; gap: 8px; }
+        }
+
+        @media (max-width: 400px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .stat-value { font-size: 16px; }
+            .stat-label { font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <p>Yuklanmoqda...</p>
+    </div>
+
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-card">
+            <div class="icon">&#128179;</div>
+            <h2>Qarzdorlar Portali</h2>
+            <p>Qarzlaringizni ko'rish uchun tizimga kiring</p>
+            <div class="form-group">
+                <label class="form-label">Login</label>
+                <input type="text" class="form-input" id="loginInput" placeholder="Loginingizni kiriting" autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Parol</label>
+                <input type="password" class="form-input" id="passwordInput" placeholder="Parolingizni kiriting" autocomplete="current-password">
+            </div>
+            <button class="login-btn" id="loginBtn" onclick="handleLogin()">Kirish</button>
+            <div class="login-error" id="loginError">Login yoki parol noto'g'ri</div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="dashboard" id="dashboard">
+        <div class="header">
+            <h1>&#128179; Qarzlarim</h1>
+            <div class="user-info">
+                <span class="user-badge" id="userBadge"></span>
+                <button class="logout-btn" onclick="handleLogout()">Chiqish</button>
+            </div>
+        </div>
+        <div class="content">
+            <!-- Stats -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card red">
+                    <div class="stat-value" id="statTotalDebt">0</div>
+                    <div class="stat-label">Jami qarz</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-value" id="statPaid">0</div>
+                    <div class="stat-label">To'langan</div>
+                </div>
+                <div class="stat-card blue">
+                    <div class="stat-value" id="statRemaining">0</div>
+                    <div class="stat-label">Qarz qoldi</div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-value" id="statCount">0</div>
+                    <div class="stat-label">Xaridlar soni</div>
+                </div>
+            </div>
+
+            <!-- Overall Progress -->
+            <div class="overall-progress">
+                <h3>To'lov jarayoni</h3>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="overallProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="progress-text">
+                    <span id="progressPaid">0 so'm to'langan</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+            </div>
+
+            <!-- Debts List -->
+            <div class="section-title">&#128230; Xaridlar tarixi</div>
+            <div id="debtsList"></div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration - O'ZGARTIRING!
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Global State
+        let currentDebtor = null;
+        let currentDebtorType = null;
+        let currentOrgName = null;
+        let allDebtors = {};
+        let allDebts = {};
+        let myDebtorIds = [];
+        let debtListeners = [];
+
+        // ==================== INITIALIZATION ====================
+        function init() {
+            // Hide loading, show login
+            setTimeout(() => {
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('loginScreen').classList.add('active');
+            }, 1000);
+
+            // Enter key on password input
+            document.getElementById('passwordInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') handleLogin();
+            });
+            document.getElementById('loginInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') document.getElementById('passwordInput').focus();
+            });
+        }
+
+        // ==================== AUTHENTICATION ====================
+        function handleLogin() {
+            const login = document.getElementById('loginInput').value.trim();
+            const password = document.getElementById('passwordInput').value.trim();
+            const errorEl = document.getElementById('loginError');
+
+            if (!login || !password) {
+                errorEl.textContent = "Login va parolni kiriting";
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            errorEl.style.display = 'none';
+            document.getElementById('loginBtn').disabled = true;
+            document.getElementById('loginBtn').textContent = 'Tekshirilmoqda...';
+
+            // Read all debtors from Firebase
+            db.ref('debtors').once('value').then(snapshot => {
+                const debtorsData = snapshot.val() || {};
+                let foundDebtor = null;
+                let foundDebtorId = null;
+
+                // Find matching login and password (case-sensitive)
+                for (const [id, debtor] of Object.entries(debtorsData)) {
+                    if (debtor.login === login && debtor.password === password) {
+                        foundDebtor = debtor;
+                        foundDebtorId = id;
+                        break;
+                    }
+                }
+
+                if (foundDebtor) {
+                    currentDebtor = foundDebtor;
+                    currentDebtor.id = foundDebtorId;
+                    allDebtors = debtorsData;
+                    currentDebtorType = foundDebtor.type;
+                    currentOrgName = foundDebtor.organizationName || '';
+
+                    // Determine which debtorIds to show debts for
+                    if (currentDebtorType === 'organization' && currentOrgName) {
+                        // Find ALL debtors with the same organization name
+                        myDebtorIds = [];
+                        for (const [id, debtor] of Object.entries(debtorsData)) {
+                            if (debtor.organizationName === currentOrgName) {
+                                myDebtorIds.push(id);
+                            }
+                        }
+                    } else {
+                        // Individual - only their own debts
+                        myDebtorIds = [foundDebtorId];
+                    }
+
+                    showDashboard();
+                    setupRealtimeListeners();
+                } else {
+                    errorEl.textContent = "Login yoki parol noto'g'ri";
+                    errorEl.style.display = 'block';
+                }
+
+                document.getElementById('loginBtn').disabled = false;
+                document.getElementById('loginBtn').textContent = 'Kirish';
+            }).catch(error => {
+                console.error('Login error:', error);
+                errorEl.textContent = "Xatolik yuz berdi. Qayta urinib ko'ring.";
+                errorEl.style.display = 'block';
+                document.getElementById('loginBtn').disabled = false;
+                document.getElementById('loginBtn').textContent = 'Kirish';
+            });
+        }
+
+        // ==================== DASHBOARD ====================
+        function showDashboard() {
+            document.getElementById('loginScreen').classList.remove('active');
+            document.getElementById('dashboard').classList.add('active');
+
+            // Set user badge
+            const badge = document.getElementById('userBadge');
+            if (currentDebtorType === 'organization') {
+                badge.textContent = currentOrgName;
+            } else {
+                badge.textContent = currentDebtor.personName;
+            }
+        }
+
+        // ==================== REAL-TIME LISTENERS ====================
+        function setupRealtimeListeners() {
+            // Clear previous listeners
+            debtListeners.forEach(unsub => unsub());
+            debtListeners = [];
+
+            // Listen to debts
+            const debtsRef = db.ref('debts');
+            const debtsListener = debtsRef.on('value', snapshot => {
+                allDebts = snapshot.val() || {};
+                updateDashboard();
+            });
+            debtListeners.push(() => debtsRef.off('value', debtsListener));
+
+            // Listen to debtors for org changes
+            const debtorsRef = db.ref('debtors');
+            const debtorsListener = debtorsRef.on('value', snapshot => {
+                allDebtors = snapshot.val() || {};
+
+                // Re-calculate myDebtorIds for organization type
+                if (currentDebtorType === 'organization' && currentOrgName) {
+                    myDebtorIds = [];
+                    for (const [id, debtor] of Object.entries(allDebtors)) {
+                        if (debtor.organizationName === currentOrgName) {
+                            myDebtorIds.push(id);
+                        }
+                    }
+                }
+                updateDashboard();
+            });
+            debtListeners.push(() => debtorsRef.off('value', debtorsListener));
+        }
+
+        // ==================== UPDATE DASHBOARD ====================
+        function updateDashboard() {
+            // Filter debts for my debtorIds
+            const myDebts = [];
+            for (const [id, debt] of Object.entries(allDebts)) {
+                if (myDebtorIds.includes(debt.debtorId)) {
+                    myDebts.push({ ...debt, id });
+                }
+            }
+
+            // Calculate stats
+            let totalAmount = 0;
+            let totalPaid = 0;
+            let totalRemaining = 0;
+
+            myDebts.forEach(debt => {
+                totalAmount += (debt.amount || 0);
+                totalPaid += (debt.paidAmount || 0);
+                totalRemaining += (debt.remainingAmount || 0);
+            });
+
+            // Update stat cards
+            document.getElementById('statTotalDebt').textContent = formatMoney(totalAmount);
+            document.getElementById('statPaid').textContent = formatMoney(totalPaid);
+            document.getElementById('statRemaining').textContent = formatMoney(totalRemaining);
+            document.getElementById('statCount').textContent = myDebts.length;
+
+            // Update overall progress
+            const progressPercent = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
+            document.getElementById('overallProgressBar').style.width = progressPercent + '%';
+            document.getElementById('progressPaid').textContent = formatMoney(totalPaid) + " to'langan";
+            document.getElementById('progressPercent').textContent = progressPercent + '%';
+
+            // Render debt cards
+            renderDebtCards(myDebts);
+        }
+
+        // ==================== RENDER DEBT CARDS ====================
+        function renderDebtCards(debts) {
+            const container = document.getElementById('debtsList');
+
+            if (debts.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">&#128203;</div><p>Hozircha qarzlar yo\'q</p></div>';
+                return;
+            }
+
+            // Sort by date (newest first)
+            debts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+            let html = '';
+            debts.forEach(debt => {
+                const isPaid = debt.status === 'paid';
+                const isPartial = debt.paidAmount > 0 && debt.status !== 'paid';
+                const statusClass = isPaid ? 'paid' : (isPartial ? 'partial' : 'active');
+                const statusText = isPaid ? "To'langan" : (isPartial ? "Qisman to'langan" : "Faol");
+                const paidPercent = debt.amount > 0 ? Math.round((debt.paidAmount / debt.amount) * 100) : 0;
+
+                // Get person name for this debt (for organization view)
+                let personLabel = '';
+                if (currentDebtorType === 'organization' && debt.debtorId) {
+                    const debtorInfo = allDebtors[debt.debtorId];
+                    if (debtorInfo && debtorInfo.personName) {
+                        personLabel = '<span class="debt-card-person">' + escapeHtml(debtorInfo.personName) + '</span>';
+                    }
+                }
+
+                // Items list
+                let itemsHtml = '';
+                if (debt.items && debt.items.length > 0) {
+                    debt.items.forEach(item => {
+                        const itemTotal = (item.price || 0) * (item.quantity || 1);
+                        itemsHtml += '<div class="debt-item">' +
+                            '<div><span class="debt-item-name">' + escapeHtml(item.name || 'Noma\'lum') + '</span>' +
+                            (item.volume ? ' <span class="debt-item-detail">(' + escapeHtml(item.volume) + ')</span>' : '') +
+                            '</div>' +
+                            '<div><span class="debt-item-detail">' + (item.quantity || 1) + ' x ' + formatMoney(item.price || 0) + '</span> ' +
+                            '<span class="debt-item-price">' + formatMoney(itemTotal) + '</span></div>' +
+                            '</div>';
+                    });
+                }
+
+                // Date
+                const dateStr = debt.createdAt ? formatDate(debt.createdAt) : 'Noma\'lum sana';
+
+                html += '<div class="debt-card ' + (isPaid ? 'paid' : '') + '">' +
+                    '<div class="debt-card-header">' +
+                    '<div><div class="debt-card-date">' + dateStr + '</div>' + personLabel + '</div>' +
+                    '<span class="debt-card-status ' + statusClass + '">' + statusText + '</span>' +
+                    '</div>' +
+                    '<div class="debt-items">' + itemsHtml + '</div>' +
+                    '<div class="debt-progress">' +
+                    '<div class="debt-progress-bar"><div class="debt-progress-fill" style="width:' + paidPercent + '%"></div></div>' +
+                    '<div class="debt-progress-text"><span>' + formatMoney(debt.paidAmount || 0) + " to'langan</span><span>" + paidPercent + '%</span></div>' +
+                    '</div>' +
+                    '<div class="debt-card-footer">' +
+                    '<div class="debt-amount">Summa: ' + formatMoney(debt.amount || 0) + '</div>' +
+                    '<div class="debt-remaining ' + (isPaid ? 'paid-full' : '') + '">' +
+                    (isPaid ? "To'liq to'langan" : 'Qoldi: ' + formatMoney(debt.remainingAmount || 0)) +
+                    '</div></div>';
+
+                // Note if exists
+                if (debt.note) {
+                    html += '<div class="debt-note">Izoh: ' + escapeHtml(debt.note) + '</div>';
+                }
+
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // ==================== LOGOUT ====================
+        function handleLogout() {
+            // Remove listeners
+            debtListeners.forEach(unsub => unsub());
+            debtListeners = [];
+
+            // Reset state
+            currentDebtor = null;
+            currentDebtorType = null;
+            currentOrgName = null;
+            myDebtorIds = [];
+            allDebts = {};
+
+            // Reset UI
+            document.getElementById('dashboard').classList.remove('active');
+            document.getElementById('loginScreen').classList.add('active');
+            document.getElementById('loginInput').value = '';
+            document.getElementById('passwordInput').value = '';
+            document.getElementById('loginError').style.display = 'none';
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
+        function formatMoney(amount) {
+            return Number(amount).toLocaleString('uz-UZ') + " so'm";
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return day + '.' + month + '.' + year + ' ' + hours + ':' + minutes;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== START APP ====================
+        init();
+    </script>
+</body>
+</html>
