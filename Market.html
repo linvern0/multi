@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏪 Do'kon Tizimi</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh; padding: 20px; color: #2d3748;
+}
+.container { max-width: 1200px; margin: 0 auto; }
+.loading-screen {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.9); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; z-index: 9999;
+}
+.loading-spinner {
+  width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3);
+  border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { color: white; margin-top: 20px; font-size: 16px; }
+
+/* Login sahifasi */
+.login-container {
+  background: white; padding: 40px; border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px; margin: 50px auto;
+}
+.login-container h1 { text-align: center; margin-bottom: 30px; font-size: 28px; }
+.role-cards { display: flex; gap: 15px; margin-bottom: 30px; }
+.role-card {
+  flex: 1; padding: 20px; border: 3px solid #e2e8f0; border-radius: 12px;
+  text-align: center; cursor: pointer; transition: all 0.3s;
+}
+.role-card:hover { border-color: #667eea; transform: translateY(-5px); }
+.role-card.active { border-color: #667eea; background: #f0f4ff; }
+.role-icon { font-size: 48px; margin-bottom: 10px; }
+.role-name { font-weight: bold; font-size: 18px; margin-bottom: 5px; }
+.role-desc { font-size: 13px; color: #718096; }
+.input-group { margin-bottom: 20px; }
+.input-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+.input-group input {
+  width: 100%; padding: 12px; border: 2px solid #e2e8f0;
+  border-radius: 8px; font-size: 16px; transition: border-color 0.3s;
+}
+.input-group input:focus { outline: none; border-color: #667eea; }
+.btn-login {
+  width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white; border: none; border-radius: 8px; font-size: 16px;
+  font-weight: bold; cursor: pointer; transition: transform 0.2s;
+}
+.btn-login:hover { transform: scale(1.05); }
+.hint { text-align: center; margin-top: 15px; font-size: 13px; color: #718096; }
+
+/* App header */
+.app-header {
+  background: white; padding: 15px 20px; border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px;
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+}
+.app-title { font-size: 24px; font-weight: bold; }
+.nav-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
+.nav-tab {
+  padding: 8px 16px; background: #f7fafc; border: none;
+  border-radius: 8px; cursor: pointer; font-size: 14px;
+  transition: all 0.3s; white-space: nowrap;
+}
+.nav-tab:hover { background: #e2e8f0; }
+.nav-tab.active { background: #667eea; color: white; }
+.status-bar { display: flex; align-items: center; gap: 15px; font-size: 14px; }
+.status-indicator { display: flex; align-items: center; gap: 5px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #48bb78; }
+.status-dot.offline { background: #f56565; }
+.btn-logout {
+  padding: 8px 16px; background: #f56565; color: white;
+  border: none; border-radius: 8px; cursor: pointer; font-size: 14px;
+}
+/* Pages */
+.page { display: none; }
+.page.active { display: block; }
+
+/* Cards */
+.card {
+  background: white; padding: 25px; border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px;
+}
+.card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
+}
+.card-title { font-size: 22px; font-weight: bold; }
+.btn {
+  padding: 10px 20px; border: none; border-radius: 8px;
+  cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s;
+}
+.btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+.btn-primary:hover { transform: scale(1.05); }
+.btn-secondary { background: #e2e8f0; color: #2d3748; }
+.btn-secondary:hover { background: #cbd5e0; }
+.btn-success { background: #48bb78; color: white; }
+.btn-danger { background: #f56565; color: white; }
+.btn-warning { background: #ed8936; color: white; }
+.btn-info { background: #4299e1; color: white; }
+.stats-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px; margin-bottom: 20px;
+}
+.stat-card {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white; padding: 20px; border-radius: 12px; text-align: center;
+}
+.stat-value { font-size: 32px; font-weight: bold; margin-bottom: 5px; }
+.stat-label { font-size: 14px; opacity: 0.9; }
+
+/* Products */
+.products-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px; margin-top: 20px;
+}
+.product-card {
+  background: white; border: 2px solid #e2e8f0; border-radius: 12px;
+  padding: 15px; transition: all 0.3s; cursor: pointer;
+}
+.product-card:hover { border-color: #667eea; transform: translateY(-5px); }
+.product-img {
+  width: 100%; height: 120px; object-fit: cover;
+  border-radius: 8px; margin-bottom: 10px; background: #f7fafc;
+}
+.product-name { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
+.product-volume { color: #718096; font-size: 13px; margin-bottom: 5px; }
+.product-price { color: #667eea; font-weight: bold; font-size: 18px; margin-bottom: 5px; }
+.product-stock { font-size: 13px; color: #718096; }
+.product-actions {
+  display: flex; gap: 5px; margin-top: 10px;
+}
+.product-actions button {
+  flex: 1; padding: 8px; border: none; border-radius: 6px;
+  cursor: pointer; font-size: 12px; transition: all 0.3s;
+}
+/* Tables */
+table {
+  width: 100%; border-collapse: collapse; margin-top: 15px;
+  background: white; border-radius: 8px; overflow: hidden;
+}
+th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+th { background: #f7fafc; font-weight: 600; }
+tr:hover { background: #f7fafc; }
+
+/* Modal */
+.modal {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7); z-index: 1000; align-items: center;
+  justify-content: center; padding: 20px;
+}
+.modal.active { display: flex; }
+.modal-content {
+  background: white; border-radius: 16px; max-width: 500px;
+  width: 100%; max-height: 90vh; overflow-y: auto; padding: 30px;
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e2e8f0;
+}
+.modal-title { font-size: 22px; font-weight: bold; }
+.modal-close {
+  background: none; border: none; font-size: 28px;
+  cursor: pointer; color: #718096; padding: 0; width: 30px; height: 30px;
+}
+.modal-body { margin-bottom: 20px; }
+.modal-footer {
+  display: flex; gap: 10px; justify-content: flex-end;
+  padding-top: 15px; border-top: 2px solid #e2e8f0;
+}
+/* Forms */
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 10px; border: 2px solid #e2e8f0;
+  border-radius: 8px; font-size: 14px;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: #667eea;
+}
+textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+
+/* Cart floating button */
+.cart-float {
+  position: fixed; bottom: 80px; right: 20px; z-index: 100;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white; padding: 15px 25px; border-radius: 50px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer;
+  font-weight: bold; display: none; align-items: center; gap: 10px;
+}
+.cart-float.active { display: flex; }
+.cart-actions { display: flex; gap: 10px; margin-top: 10px; }
+.cart-actions button { flex: 1; }
+/* Bottom nav - mobile */
+.bottom-nav {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  padding: 10px 0; z-index: 99;
+}
+.bottom-nav-items {
+  display: flex; justify-content: space-around; align-items: center;
+}
+.bottom-nav-item {
+  flex: 1; text-align: center; padding: 8px; cursor: pointer;
+  border: none; background: none; font-size: 12px; color: #718096;
+  transition: color 0.3s;
+}
+.bottom-nav-item.active { color: #667eea; }
+/* Filters */
+.filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+.filters select, .filters button {
+  padding: 8px 16px; border: 2px solid #e2e8f0;
+  border-radius: 8px; font-size: 14px; cursor: pointer;
+}
+
+/* Alert & Empty states */
+.alert {
+  padding: 15px; border-radius: 8px; margin-bottom: 15px;
+}
+.alert-info { background: #bee3f8; color: #2c5282; }
+.alert-success { background: #c6f6d5; color: #22543d; }
+.alert-warning { background: #feebc8; color: #7c2d12; }
+.alert-danger { background: #fed7d7; color: #742a2a; }
+.empty-state {
+  text-align: center; padding: 60px 20px; color: #718096;
+}
+.empty-state-icon { font-size: 64px; margin-bottom: 15px; }
+.empty-state-text { font-size: 18px; }
+/* Badges */
+.badge {
+  display: inline-block; padding: 4px 10px; border-radius: 12px;
+  font-size: 12px; font-weight: 600;
+}
+.badge-success { background: #c6f6d5; color: #22543d; }
+.badge-warning { background: #feebc8; color: #7c2d12; }
+.badge-danger { background: #fed7d7; color: #742a2a; }
+.badge-info { background: #bee3f8; color: #2c5282; }
+/* Responsive */
+@media (max-width: 768px) {
+  .app-header { flex-direction: column; align-items: flex-start; }
+  .nav-tabs { width: 100%; overflow-x: auto; }
+  .bottom-nav { display: block; }
+  body { padding-bottom: 70px; }
+  .modal-content { margin: 20px; }
+}
+</style>
+
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Firebase bilan ulanmoqda...</div>
+</div>
+
+<!-- Login Container -->
+<div class="login-container" id="loginContainer">
+  <h1>🏪 Do'kon Tizimi</h1>
+  <p style="text-align: center; margin-bottom: 20px; color: #718096;">Rolni tanlang va PIN kiriting</p>
+  
+  <div class="role-cards">
+    <div class="role-card" data-role="admin">
+      <div class="role-icon">👨‍💼</div>
+      <div class="role-name">Admin</div>
+      <div class="role-desc">Tovar boshqaruvi</div>
+    </div>
+    
+    <div class="role-card" data-role="seller">
+      <div class="role-icon">🛒</div>
+      <div class="role-name">Sotuvchi</div>
+      <div class="role-desc">Savdo qilish</div>
+    </div>
+  </div>
+  
+  <div class="input-group">
+    <label>PIN kod</label>
+    <input type="password" id="pinInput" placeholder="****" maxlength="4" />
+  </div>
+  
+  <button class="btn-login" id="loginBtn">Kirish →</button>
+  <p class="hint">Admin: 1234 · Sotuvchi: 5678</p>
+</div>
+
+<!-- Main App -->
+<div class="container" id="appContainer" style="display: none;">
+  
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-title">🏪 Do'kon</div>
+    
+    <!-- Admin Navigation -->
+    <nav class="nav-tabs" id="adminNav" style="display: none;">
+      <button class="nav-tab active" data-page="dashboard">📊 Bosh sahifa</button>
+      <button class="nav-tab" data-page="products">📦 Tovarlar</button>
+      <button class="nav-tab" data-page="sales">📋 Savdo tarixi</button>
+      <button class="nav-tab" data-page="inventory">🚚 Kirim/Chiqim</button>
+      <button class="nav-tab" data-page="debts">💳 Qarzlar</button>
+      <button class="nav-tab" data-page="settings">⚙️ Sozlamalar</button>
+    </nav>
+    
+    <!-- Seller Navigation -->
+    <nav class="nav-tabs" id="sellerNav" style="display: none;">
+      <button class="nav-tab active" data-page="sell">🛒 Sotish</button>
+      <button class="nav-tab" data-page="mySales">📋 Mening sotuvlarim</button>
+    </nav>
+    
+    <div class="status-bar">
+      <div class="status-indicator">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Online</span>
+      </div>
+      <span id="currentUser">—</span>
+      <button class="btn-logout" id="logoutBtn">Chiqish</button>
+    </div>
+  </header>
+
+  <!-- ADMIN PAGES -->
+  
+  <!-- Dashboard Page -->
+  <div class="page active" id="dashboard">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Bosh sahifa</h2>
+        <div class="filters">
+          <button class="btn btn-secondary" data-period="today">Bugun</button>
+          <button class="btn btn-secondary" data-period="week">Bu hafta</button>
+          <button class="btn btn-secondary" data-period="month">Bu oy</button>
+          <button class="btn btn-secondary" data-period="all">Hammasi</button>
+        </div>
+      </div>
+      
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-value" id="totalSales">0</div>
+          <div class="stat-label">Savdolar soni</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="totalRevenue">0 so'm</div>
+          <div class="stat-label">Jami summa</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="totalProducts">0</div>
+          <div class="stat-label">Tovarlar soni</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="totalDebt">0 so'm</div>
+          <div class="stat-label">Qarzlar</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h3>🏆 Top sotilganlar</h3>
+      <div id="topProducts"></div>
+    </div>
+    
+    <div class="card">
+      <h3>⚠️ Kam qolgan tovarlar</h3>
+      <div id="lowStock"></div>
+    </div>
+  </div>
+
+  <!-- Products Page -->
+  <div class="page" id="products">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Tovar boshqaruvi</h2>
+        <button class="btn btn-primary" id="addProductBtn">+ Tovar qo'shish</button>
+      </div>
+      
+      <div class="filters">
+        <select id="sortProducts">
+          <option value="name_asc">A → Z</option>
+          <option value="name_desc">Z → A</option>
+          <option value="volume">Hajm bo'yicha</option>
+          <option value="stock_low">Kam zaxira</option>
+          <option value="date">Qo'shilgan tartib</option>
+        </select>
+      </div>
+      
+      <div class="products-grid" id="productsGrid">
+        <div class="empty-state">
+          <div class="empty-state-icon">📦</div>
+          <div class="empty-state-text">Hali tovar yo'q.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Sales History Page -->
+  <div class="page" id="sales">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Savdo tarixi</h2>
+      </div>
+      
+      <div class="filters">
+        <select id="salesDateFilter">
+          <option value="today">Bugun</option>
+          <option value="yesterday">Kecha</option>
+          <option value="week">Bu hafta</option>
+          <option value="month">Bu oy</option>
+          <option value="all">Barchasi</option>
+        </select>
+        <button class="btn btn-secondary" id="exportCSV">⬇ CSV</button>
+      </div>
+      
+      <div id="salesTable"></div>
+    </div>
+  </div>
+
+  <!-- Inventory Page -->
+  <div class="page" id="inventory">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">📦 Kirim / Chiqim tarixi</h2>
+      </div>
+      
+      <div class="filters">
+        <select id="inventoryDateFilter">
+          <option value="today">Bugun</option>
+          <option value="yesterday">Kecha</option>
+          <option value="week">Bu hafta</option>
+          <option value="all">Barchasi</option>
+        </select>
+        <select id="inventoryTypeFilter">
+          <option value="all">Kirim + Chiqim</option>
+          <option value="in">Faqat Kirim</option>
+          <option value="out">Faqat Chiqim</option>
+        </select>
+      </div>
+      
+      <div id="inventoryTable"></div>
+    </div>
+  </div>
+  
+  <!-- Debts Page (YANGI) -->
+  <div class="page" id="debts">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">💳 Qarzlar</h2>
+      </div>
+      
+      <div class="filters">
+        <select id="debtTypeFilter">
+          <option value="all">Hammasi</option>
+          <option value="organization">Tashkilotlar</option>
+          <option value="individual">Shaxslar</option>
+        </select>
+        <select id="debtStatusFilter">
+          <option value="active">Ochiq qarzlar</option>
+          <option value="paid">To'langan</option>
+          <option value="all">Barchasi</option>
+        </select>
+      </div>
+      
+      <div id="debtsTable"></div>
+    </div>
+  </div>
+
+  <!-- Settings Page -->
+  <div class="page" id="settings">
+    <div class="card">
+      <h3>PIN kodlarni o'zgartirish</h3>
+      <div class="form-group">
+        <label>Admin PIN</label>
+        <input type="password" id="adminPinInput" maxlength="4" />
+      </div>
+      <div class="form-group">
+        <label>Sotuvchi PIN</label>
+        <input type="password" id="sellerPinInput" maxlength="4" />
+      </div>
+      <button class="btn btn-primary" id="savePinsBtn">Saqlash</button>
+    </div>
+    
+    <div class="card">
+      <h3>Sotuvchi orqaga qaytarish muddati</h3>
+      <div class="form-group">
+        <label>Muddat (daqiqa)</label>
+        <input type="number" id="returnPeriodInput" value="30" />
+      </div>
+      <button class="btn btn-primary" id="saveReturnPeriodBtn">Saqlash</button>
+    </div>
+    
+    <div class="card">
+      <h3>Ma'lumotlar</h3>
+      <p style="color: #718096; margin-bottom: 15px;">
+        Barcha ma'lumotlar Firebase bulutida avtomatik saqlanadi va barcha qurilmalarda real vaqtda sinxronlanadi.
+      </p>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-secondary" id="exportAllBtn">⬇ CSV yuklab olish</button>
+        <button class="btn btn-danger" id="deleteAllBtn">🗑 Hammasini o'chirish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELLER PAGES -->
+  
+  <!-- Sell Page -->
+  <div class="page" id="sell">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Sotish</h2>
+      </div>
+      
+      <input type="text" placeholder="🔍 Qidirish..." id="searchProducts" 
+             style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px;" />
+      
+      <div class="products-grid" id="sellProductsGrid">
+        <div class="empty-state">
+          <div class="empty-state-icon">📦</div>
+          <div class="empty-state-text">Tovar topilmadi yoki ombor bo'sh.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- My Sales Page -->
+  <div class="page" id="mySales">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Mening sotuvlarim</h2>
+      </div>
+      
+      <div class="filters">
+        <select id="mySalesDateFilter">
+          <option value="today">Bugun</option>
+          <option value="yesterday">Kecha</option>
+          <option value="all">Barchasi</option>
+        </select>
+      </div>
+      
+      <div id="mySalesTable"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Cart Float Button -->
+<div class="cart-float" id="cartFloat">
+  🛒 Savat: <span id="cartCount">0</span> ta tovar · <span id="cartTotal">0</span> so'm
+  <div class="cart-actions" style="margin-left: 15px;">
+    <button class="btn btn-danger" id="clearCartBtn">🗑 Tozalash</button>
+    <button class="btn btn-success" id="viewCartBtn">Ko'rish va sotish →</button>
+  </div>
+</div>
+
+<!-- Bottom Navigation (Mobile) -->
+<div class="bottom-nav">
+  <div class="bottom-nav-items">
+    <button class="bottom-nav-item active" data-page="dashboard">
+      <div style="font-size: 20px;">📊</div>
+      <div>Bosh</div>
+    </button>
+    <button class="bottom-nav-item" data-page="products">
+      <div style="font-size: 20px;">📦</div>
+      <div>Tovarlar</div>
+    </button>
+    <button class="bottom-nav-item" data-page="sales">
+      <div style="font-size: 20px;">📋</div>
+      <div>Tarix</div>
+    </button>
+    <button class="bottom-nav-item" data-page="inventory">
+      <div style="font-size: 20px;">🚚</div>
+      <div>Kirim</div>
+    </button>
+    <button class="bottom-nav-item" data-page="settings">
+      <div style="font-size: 20px;">⚙️</div>
+      <div>Sozlama</div>
+    </button>
+  </div>
+</div>
+
+<!-- MODALS -->
+
+<!-- Add Product Modal -->
+<div class="modal" id="addProductModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">Yangi tovar</h3>
+      <button class="modal-close" onclick="closeModal('addProductModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Tovar nomi *</label>
+        <input type="text" id="productName" placeholder="Masalan: Coca-Cola" />
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div class="form-group">
+          <label>Hajm (litr)</label>
+          <select id="productVolume">
+            <option value="">— Hajmsiz —</option>
+            <option value="0.25">0.25 L</option>
+            <option value="0.5">0.5 L</option>
+            <option value="1.0">1.0 L</option>
+            <option value="1.5">1.5 L</option>
+            <option value="2.0">2.0 L</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Narx (so'm) *</label>
+          <input type="number" id="productPrice" placeholder="10000" />
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Boshlang'ich miqdor *</label>
+        <input type="number" id="productStock" placeholder="0" value="0" />
+        <small style="color: #718096;">Keyingi kirim/chiqimlar alohida ro'yxatda saqlanadi.</small>
+      </div>
+      
+      <div class="form-group">
+        <label>Rasm URL (ixtiyoriy)</label>
+        <input type="text" id="productImage" placeholder="https://..." />
+      </div>
+      
+      <div class="form-group">
+        <label>Izoh</label>
+        <textarea id="productNote" placeholder="Qo'shimcha ma'lumot..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('addProductModal')">Bekor qilish</button>
+      <button class="btn btn-primary" id="saveProductBtn">Saqlash</button>
+    </div>
+  </div>
+</div>
+
+<!-- Stock In Modal -->
+<div class="modal" id="stockInModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">📦 Kirim: <span id="stockInProductName"></span></h3>
+      <button class="modal-close" onclick="closeModal('stockInModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="background: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+          <span>Hozirgi zaxira:</span>
+          <strong id="stockInCurrent">0</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+          <span style="color: #48bb78;">+ Qo'shilayotgan:</span>
+          <strong style="color: #48bb78;" id="stockInAdding">0</strong>
+        </div>
+        <hr style="border: 1px solid #e2e8f0; margin: 10px 0;" />
+        <div style="display: flex; justify-content: space-between;">
+          <span>Natija:</span>
+          <strong style="color: #667eea;" id="stockInResult">0</strong>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Qo'shiladigan miqdor *</label>
+        <input type="number" id="stockInAmount" placeholder="0" min="1" />
+      </div>
+      
+      <div class="form-group">
+        <label>Sabab / Izoh (ixtiyoriy)</label>
+        <textarea id="stockInReason" placeholder="Yetkazuvchidan keldi..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('stockInModal')">Bekor qilish</button>
+      <button class="btn btn-success" id="saveStockInBtn">✓ Qo'shish</button>
+    </div>
+  </div>
+</div>
+
+<!-- Stock Out Modal -->
+<div class="modal" id="stockOutModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">↩ Chiqim: <span id="stockOutProductName"></span></h3>
+      <button class="modal-close" onclick="closeModal('stockOutModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="background: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+          <span>Hozirgi zaxira:</span>
+          <strong id="stockOutCurrent">0</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+          <span style="color: #f56565;">− Kamaytirilayotgan:</span>
+          <strong style="color: #f56565;" id="stockOutRemoving">0</strong>
+        </div>
+        <hr style="border: 1px solid #e2e8f0; margin: 10px 0;" />
+        <div style="display: flex; justify-content: space-between;">
+          <span>Natija:</span>
+          <strong style="color: #667eea;" id="stockOutResult">0</strong>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Chiqim miqdori *</label>
+        <input type="number" id="stockOutAmount" placeholder="0" min="1" />
+      </div>
+      
+      <div class="form-group">
+        <label>Sabab *</label>
+        <select id="stockOutReason">
+          <option value="returned">↩ Yetkazuvchiga qaytarildi</option>
+          <option value="expired">🗑 Yaroqsiz / eskirgan</option>
+          <option value="damaged">💔 Sinib ketdi / zararlandi</option>
+          <option value="inventory">📋 Inventarizatsiya tuzatish</option>
+          <option value="other">📝 Boshqa</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>Qo'shimcha izoh (ixtiyoriy)</label>
+        <textarea id="stockOutNote" placeholder="Batafsil..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('stockOutModal')">Bekor qilish</button>
+      <button class="btn btn-danger" id="saveStockOutBtn">↩ Chiqim qilish</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cart Modal -->
+<div class="modal" id="cartModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">🛒 Savat</h3>
+      <button class="modal-close" onclick="closeModal('cartModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="cartItems"></div>
+      <hr style="margin: 20px 0;" />
+      <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold;">
+        <span>Jami summa:</span>
+        <span id="cartModalTotal">0 so'm</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('cartModal')">Yopish</button>
+      <button class="btn btn-danger" id="clearCartModalBtn">🗑 Savatni tozalash</button>
+      <button class="btn btn-success" id="checkoutBtn">✓ Naqd sotish</button>
+      <button class="btn btn-info" id="debtCheckoutBtn">💳 Qarzga sotish</button>
+    </div>
+  </div>
+</div>
+
+<!-- QARZGA SOTISH MODAL (YANGI) -->
+<div class="modal" id="debtModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">💳 Qarzga sotish</h3>
+      <button class="modal-close" onclick="closeModal('debtModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Tashkilot yoki Shaxs tanlash -->
+      <div class="form-group">
+        <label>Turi *</label>
+        <select id="debtorType">
+          <option value="">— Tanlang —</option>
+          <option value="organization">🏢 Tashkilot</option>
+          <option value="individual">👤 Shaxs</option>
+        </select>
+      </div>
+      
+      <!-- Tashkilot nomi -->
+      <div class="form-group" id="organizationGroup" style="display: none;">
+        <label>Tashkilot nomi *</label>
+        <input type="text" id="organizationName" placeholder="Masalan: ABS, XYZ kompaniya" list="organizationList" />
+        <datalist id="organizationList"></datalist>
+        <small style="color: #718096;">Avvalgi tashkilotlarni tanlashingiz mumkin</small>
+      </div>
+      
+      <!-- Shaxs ismi -->
+      <div class="form-group">
+        <label>Xaridor ismi *</label>
+        <input type="text" id="personName" placeholder="Masalan: Aziz, Rustam, Nodir" list="personList" />
+        <datalist id="personList"></datalist>
+        <small style="color: #718096;">Kim olayotgani (tashkilot xodimi yoki alohida shaxs)</small>
+      </div>
+      
+      <!-- Telefon raqami -->
+      <div class="form-group">
+        <label>Telefon raqami (ixtiyoriy)</label>
+        <input type="tel" id="debtorPhone" placeholder="+998 90 123 45 67" />
+      </div>
+      
+      <!-- Izoh -->
+      <div class="form-group">
+        <label>Izoh (ixtiyoriy)</label>
+        <textarea id="debtNote" placeholder="Qo'shimcha ma'lumot..."></textarea>
+      </div>
+      
+      <div style="background: #f0f4ff; padding: 15px; border-radius: 8px; border: 2px solid #667eea;">
+        <div style="font-weight: 600; margin-bottom: 10px;">💰 Qarz summasi:</div>
+        <div style="font-size: 24px; font-weight: bold; color: #667eea;" id="debtAmount">0 so'm</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('debtModal')">Bekor qilish</button>
+      <button class="btn btn-primary" id="saveDebtBtn">✓ Qarzga sotish</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN/PAROL YARATISH MODAL (YANGI) -->
+<div class="modal" id="createCredentialsModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">🔐 Login va Parol yaratish</h3>
+      <button class="modal-close" onclick="closeModal('createCredentialsModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info">
+        <strong>Birinchi marta qarzga sotish!</strong><br />
+        <span id="credentialDebtorName"></span> uchun login va parol yarating. 
+        Bu ma'lumotlar qarzdor o'z qarzlarini ko'rish uchun ishlatadi.
+      </div>
+      
+      <div class="form-group">
+        <label>Login *</label>
+        <input type="text" id="debtorLogin" placeholder="Masalan: abs_company yoki bek_user" />
+        <small style="color: #718096;">Faqat lotin harflar, raqamlar va _ ishlatish mumkin</small>
+      </div>
+      
+      <div class="form-group">
+        <label>Parol *</label>
+        <input type="text" id="debtorPassword" placeholder="Kamida 6 belgidan" />
+        <button type="button" class="btn btn-secondary" style="margin-top: 5px;" id="generatePasswordBtn">
+          🎲 Tasodifiy parol yaratish
+        </button>
+      </div>
+      
+      <div class="alert alert-warning">
+        ⚠️ Bu ma'lumotlarni qarzdorga yetkazishni unutmang!
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('createCredentialsModal')">Bekor qilish</button>
+      <button class="btn btn-primary" id="saveCredentialsBtn">✓ Yaratish va davom etish</button>
+    </div>
+  </div>
+</div>
+
+<!-- QARZ TO'LASH MODAL (YANGI) -->
+<div class="modal" id="payDebtModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">💰 Qarz to'lash</h3>
+      <button class="modal-close" onclick="closeModal('payDebtModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="background: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div><strong>Qarzdor:</strong> <span id="payDebtorName"></span></div>
+        <div><strong>Jami qarz:</strong> <span id="payDebtTotal" style="color: #f56565; font-size: 20px;"></span></div>
+      </div>
+      
+      <div class="form-group">
+        <label>To'lanadigan summa *</label>
+        <input type="number" id="paymentAmount" placeholder="0" />
+        <button type="button" class="btn btn-secondary" style="margin-top: 5px;" id="payFullBtn">
+          💯 To'liq to'lash
+        </button>
+      </div>
+      
+      <div class="form-group">
+        <label>Izoh (ixtiyoriy)</label>
+        <textarea id="paymentNote" placeholder="To'lov haqida ma'lumot..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('payDebtModal')">Bekor qilish</button>
+      <button class="btn btn-success" id="savePaymentBtn">✓ To'lovni qabul qilish</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal" id="confirmModal">
+  <div class="modal-content" style="max-width: 400px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Tasdiqlash</h3>
+      <button class="modal-close" onclick="closeModal('confirmModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirmMessage"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Yo'q</button>
+      <button class="btn btn-danger" id="confirmYesBtn">Ha, davom etish</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Firebase SDK -->
+<script type="module">
+// Firebase import
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getDatabase, ref, set, get, update, remove, onValue, push, query, orderByChild } 
+  from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+// Firebase konfiguratsiya - O'Z KONFIGURATSIYANGIZNI KIRITING
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "YOUR_DATABASE_URL",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_BUCKET",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+// Firebase'ni ishga tushirish
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Global o'zgaruvchilar
+let currentUser = null;
+let currentRole = null;
+let cart = [];
+let allProducts = [];
+let allSales = [];
+let allInventory = [];
+let allDebts = [];
+let allDebtors = [];
+let selectedProductId = null;
+let currentDebtorId = null;
+
+// Utility functions
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('uz-UZ').format(amount) + ' so\'m';
+}
+
+function formatDate(timestamp) {
+  const date = new Date(timestamp);
+  return date.toLocaleString('uz-UZ', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function generatePassword(length = 8) {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
+function showNotification(message, type = 'info') {
+  const colors = {
+    success: '#48bb78',
+    error: '#f56565',
+    info: '#4299e1',
+    warning: '#ed8936'
+  };
+  
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed; top: 20px; right: 20px; z-index: 10000;
+    background: ${colors[type]}; color: white; padding: 15px 25px;
+    border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    animation: slideIn 0.3s ease-out;
+  `;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease-out';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
+// Modal functions
+window.openModal = function(modalId) {
+  document.getElementById(modalId).classList.add('active');
+};
+
+window.closeModal = function(modalId) {
+  document.getElementById(modalId).classList.remove('active');
+};
+
+// Page navigation
+function showPage(pageName) {
+  document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+  document.getElementById(pageName)?.classList.add('active');
+  
+  document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelector(`[data-page="${pageName}"]`)?.classList.add('active');
+  
+  document.querySelectorAll('.bottom-nav-item').forEach(item => item.classList.remove('active'));
+  document.querySelector(`.bottom-nav-item[data-page="${pageName}"]`)?.classList.add('active');
+  
+  // Page-specific actions
+  if (pageName === 'dashboard') loadDashboard();
+  if (pageName === 'products') loadProducts();
+  if (pageName === 'sales') loadSalesHistory();
+  if (pageName === 'inventory') loadInventoryHistory();
+  if (pageName === 'debts') loadDebts();
+  if (pageName === 'sell') loadSellProducts();
+  if (pageName === 'mySales') loadMySales();
+}
+
+// LOGIN
+document.querySelectorAll('.role-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.role-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+  });
+});
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const pin = document.getElementById('pinInput').value;
+  const selectedRole = document.querySelector('.role-card.active')?.dataset.role;
+  
+  if (!selectedRole) {
+    showNotification('Rolni tanlang!', 'warning');
+    return;
+  }
+  
+  if (!pin || pin.length !== 4) {
+    showNotification('4 raqamli PIN kiriting!', 'warning');
+    return;
+  }
+  
+  // Firebase'dan PIN kodlarni olish
+  const settingsRef = ref(db, 'settings');
+  const snapshot = await get(settingsRef);
+  const settings = snapshot.val() || { adminPin: '1234', sellerPin: '5678' };
+  
+  if (selectedRole === 'admin' && pin === settings.adminPin) {
+    currentUser = 'Admin';
+    currentRole = 'admin';
+    login();
+  } else if (selectedRole === 'seller' && pin === settings.sellerPin) {
+    currentUser = 'Sotuvchi';
+    currentRole = 'seller';
+    login();
+  } else {
+    showNotification('Noto\'g\'ri PIN kod!', 'error');
+  }
+});
+
+function login() {
+  document.getElementById('loginContainer').style.display = 'none';
+  document.getElementById('appContainer').style.display = 'block';
+  document.getElementById('currentUser').textContent = currentUser;
+  
+  if (currentRole === 'admin') {
+    document.getElementById('adminNav').style.display = 'flex';
+    document.getElementById('sellerNav').style.display = 'none';
+    showPage('dashboard');
+  } else {
+    document.getElementById('adminNav').style.display = 'none';
+    document.getElementById('sellerNav').style.display = 'flex';
+    showPage('sell');
+  }
+  
+  loadData();
+  showNotification('Xush kelibsiz, ' + currentUser + '!', 'success');
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  currentUser = null;
+  currentRole = null;
+  cart = [];
+  document.getElementById('loginContainer').style.display = 'block';
+  document.getElementById('appContainer').style.display = 'none';
+  document.getElementById('pinInput').value = '';
+  showNotification('Tizimdan chiqdingiz', 'info');
+});
+
+// Navigation
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => showPage(tab.dataset.page));
+});
+
+document.querySelectorAll('.bottom-nav-item').forEach(item => {
+  item.addEventListener('click', () => showPage(item.dataset.page));
+});
+
+// Firebase realtime listeners
+function loadData() {
+  // Products
+  onValue(ref(db, 'products'), (snapshot) => {
+    allProducts = [];
+    snapshot.forEach(child => {
+      allProducts.push({ id: child.key, ...child.val() });
+    });
+    if (currentRole === 'admin') loadProducts();
+    if (currentRole === 'seller') loadSellProducts();
+  });
+  
+  // Sales
+  onValue(ref(db, 'sales'), (snapshot) => {
+    allSales = [];
+    snapshot.forEach(child => {
+      allSales.push({ id: child.key, ...child.val() });
+    });
+    if (currentRole === 'admin') loadDashboard();
+  });
+  
+  // Inventory
+  onValue(ref(db, 'inventory'), (snapshot) => {
+    allInventory = [];
+    snapshot.forEach(child => {
+      allInventory.push({ id: child.key, ...child.val() });
+    });
+  });
+  
+  // Debts (YANGI)
+  onValue(ref(db, 'debts'), (snapshot) => {
+    allDebts = [];
+    snapshot.forEach(child => {
+      allDebts.push({ id: child.key, ...child.val() });
+    });
+    if (currentRole === 'admin') {
+      loadDebts();
+      loadDashboard();
+    }
+  });
+  
+  // Debtors (YANGI)
+  onValue(ref(db, 'debtors'), (snapshot) => {
+    allDebtors = [];
+    snapshot.forEach(child => {
+      allDebtors.push({ id: child.key, ...child.val() });
+    });
+  });
+}
+
+// DASHBOARD
+function loadDashboard() {
+  const period = 'today'; // Bu yerda filter qo'shish mumkin
+  
+  // Stats
+  const totalSales = allSales.length;
+  const totalRevenue = allSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+  const totalProducts = allProducts.length;
+  const totalDebt = allDebts
+    .filter(d => d.status === 'active')
+    .reduce((sum, d) => sum + (d.remainingAmount || d.amount), 0);
+  
+  document.getElementById('totalSales').textContent = totalSales;
+  document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+  document.getElementById('totalProducts').textContent = totalProducts;
+  document.getElementById('totalDebt').textContent = formatCurrency(totalDebt);
+  
+  // Top products
+  const productSales = {};
+  allSales.forEach(sale => {
+    if (sale.items) {
+      sale.items.forEach(item => {
+        if (!productSales[item.productId]) {
+          productSales[item.productId] = { count: 0, revenue: 0, name: item.name };
+        }
+        productSales[item.productId].count += item.quantity;
+        productSales[item.productId].revenue += item.total;
+      });
+    }
+  });
+  
+  const topProducts = Object.entries(productSales)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 5);
+  
+  const topProductsHtml = topProducts.length > 0 
+    ? `<table><thead><tr><th>Tovar</th><th>Sotildi</th><th>Summa</th></tr></thead><tbody>
+       ${topProducts.map(([id, data]) => `
+         <tr>
+           <td>${data.name}</td>
+           <td>${data.count} dona</td>
+           <td>${formatCurrency(data.revenue)}</td>
+         </tr>
+       `).join('')}</tbody></table>`
+    : '<p class="empty-state-text">Ma\'lumot yo\'q</p>';
+  
+  document.getElementById('topProducts').innerHTML = topProductsHtml;
+  
+  // Low stock
+  const lowStock = allProducts.filter(p => p.stock <= 10).slice(0, 5);
+  const lowStockHtml = lowStock.length > 0
+    ? `<table><thead><tr><th>Tovar</th><th>Hajm</th><th>Qolgan</th></tr></thead><tbody>
+       ${lowStock.map(p => `
+         <tr>
+           <td>${p.name}</td>
+           <td>${p.volume ? p.volume + ' L' : '—'}</td>
+           <td><span class="badge badge-danger">${p.stock}</span></td>
+         </tr>
+       `).join('')}</tbody></table>`
+    : '<p class="empty-state-text">Hammasi yetarli</p>';
+  
+  document.getElementById('lowStock').innerHTML = lowStockHtml;
+}
+
+// PRODUCTS
+function loadProducts() {
+  const container = document.getElementById('productsGrid');
+  if (allProducts.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">Hali tovar yo\'q.</div></div>';
+    return;
+  }
+  
+  const html = allProducts.map(product => `
+    <div class="product-card">
+      <img src="${product.image || 'https://via.placeholder.com/200?text=Rasm+yo\'q'}" 
+           class="product-img" alt="${product.name}" />
+      <div class="product-name">${product.name}</div>
+      <div class="product-volume">${product.volume ? product.volume + ' L' : 'Hajmsiz'}</div>
+      <div class="product-price">${formatCurrency(product.price)}</div>
+      <div class="product-stock">Zaxira: <strong>${product.stock}</strong></div>
+      <div class="product-actions">
+        <button class="btn btn-success" onclick="openStockIn('${product.id}')" title="Kirim">📦+</button>
+        <button class="btn btn-danger" onclick="openStockOut('${product.id}')" title="Chiqim">📦-</button>
+        <button class="btn btn-secondary" onclick="editProduct('${product.id}')" title="Tahrirlash">✏️</button>
+      </div>
+    </div>
+  `).join('');
+  
+  container.innerHTML = html;
+}
+
+// Add product
+document.getElementById('addProductBtn').addEventListener('click', () => {
+  document.getElementById('productName').value = '';
+  document.getElementById('productVolume').value = '';
+  document.getElementById('productPrice').value = '';
+  document.getElementById('productStock').value = '0';
+  document.getElementById('productImage').value = '';
+  document.getElementById('productNote').value = '';
+  openModal('addProductModal');
+});
+
+document.getElementById('saveProductBtn').addEventListener('click', async () => {
+  const name = document.getElementById('productName').value.trim();
+  const volume = document.getElementById('productVolume').value;
+  const price = parseFloat(document.getElementById('productPrice').value);
+  const stock = parseInt(document.getElementById('productStock').value) || 0;
+  const image = document.getElementById('productImage').value.trim();
+  const note = document.getElementById('productNote').value.trim();
+  
+  if (!name || !price) {
+    showNotification('Tovar nomi va narxni kiriting!', 'warning');
+    return;
+  }
+  
+  const productId = generateId();
+  const productData = {
+    name, volume, price, stock, image, note,
+    createdAt: Date.now(),
+    createdBy: currentUser
+  };
+  
+  await set(ref(db, 'products/' + productId), productData);
+  
+  // Initial inventory log
+  if (stock > 0) {
+    const inventoryId = generateId();
+    await set(ref(db, 'inventory/' + inventoryId), {
+      productId, productName: name, volume,
+      type: 'in', amount: stock,
+      reason: 'Boshlang\'ich zaxira',
+      resultStock: stock,
+      timestamp: Date.now(),
+      user: currentUser
+    });
+  }
+  
+  closeModal('addProductModal');
+  showNotification('Tovar qo\'shildi!', 'success');
+});
+
+// Stock In
+window.openStockIn = function(productId) {
+  selectedProductId = productId;
+  const product = allProducts.find(p => p.id === productId);
+  if (!product) return;
+  
+  document.getElementById('stockInProductName').textContent = product.name;
+  document.getElementById('stockInCurrent').textContent = product.stock;
+  document.getElementById('stockInAdding').textContent = '0';
+  document.getElementById('stockInResult').textContent = product.stock;
+  document.getElementById('stockInAmount').value = '';
+  document.getElementById('stockInReason').value = '';
+  
+  openModal('stockInModal');
+};
+
+document.getElementById('stockInAmount').addEventListener('input', (e) => {
+  const product = allProducts.find(p => p.id === selectedProductId);
+  const amount = parseInt(e.target.value) || 0;
+  document.getElementById('stockInAdding').textContent = amount;
+  document.getElementById('stockInResult').textContent = product.stock + amount;
+});
+
+document.getElementById('saveStockInBtn').addEventListener('click', async () => {
+  const amount = parseInt(document.getElementById('stockInAmount').value);
+  const reason = document.getElementById('stockInReason').value.trim();
+  
+  if (!amount || amount <= 0) {
+    showNotification('Miqdorni kiriting!', 'warning');
+    return;
+  }
+  
+  const product = allProducts.find(p => p.id === selectedProductId);
+  const newStock = product.stock + amount;
+  
+  // Update product stock
+  await update(ref(db, 'products/' + selectedProductId), { stock: newStock });
+  
+  // Add inventory log
+  const inventoryId = generateId();
+  await set(ref(db, 'inventory/' + inventoryId), {
+    productId: selectedProductId,
+    productName: product.name,
+    volume: product.volume,
+    type: 'in',
+    amount,
+    reason: reason || 'Kirim',
+    resultStock: newStock,
+    timestamp: Date.now(),
+    user: currentUser
+  });
+  
+  closeModal('stockInModal');
+  showNotification('Zaxira qo\'shildi!', 'success');
+});
+
+// Stock Out
+window.openStockOut = function(productId) {
+  selectedProductId = productId;
+  const product = allProducts.find(p => p.id === productId);
+  if (!product) return;
+  
+  document.getElementById('stockOutProductName').textContent = product.name;
+  document.getElementById('stockOutCurrent').textContent = product.stock;
+  document.getElementById('stockOutRemoving').textContent = '0';
+  document.getElementById('stockOutResult').textContent = product.stock;
+  document.getElementById('stockOutAmount').value = '';
+  document.getElementById('stockOutReason').value = 'returned';
+  document.getElementById('stockOutNote').value = '';
+  
+  openModal('stockOutModal');
+};
+
+document.getElementById('stockOutAmount').addEventListener('input', (e) => {
+  const product = allProducts.find(p => p.id === selectedProductId);
+  const amount = parseInt(e.target.value) || 0;
+  document.getElementById('stockOutRemoving').textContent = amount;
+  document.getElementById('stockOutResult').textContent = Math.max(0, product.stock - amount);
+});
+
+document.getElementById('saveStockOutBtn').addEventListener('click', async () => {
+  const amount = parseInt(document.getElementById('stockOutAmount').value);
+  const reason = document.getElementById('stockOutReason').value;
+  const note = document.getElementById('stockOutNote').value.trim();
+  
+  if (!amount || amount <= 0) {
+    showNotification('Miqdorni kiriting!', 'warning');
+    return;
+  }
+  
+  const product = allProducts.find(p => p.id === selectedProductId);
+  
+  if (amount > product.stock) {
+    showNotification('Zaxirada yetarli tovar yo\'q!', 'error');
+    return;
+  }
+  
+  const newStock = product.stock - amount;
+  
+  await update(ref(db, 'products/' + selectedProductId), { stock: newStock });
+  
+  const inventoryId = generateId();
+  await set(ref(db, 'inventory/' + inventoryId), {
+    productId: selectedProductId,
+    productName: product.name,
+    volume: product.volume,
+    type: 'out',
+    amount,
+    reason,
+    note,
+    resultStock: newStock,
+    timestamp: Date.now(),
+    user: currentUser
+  });
+  
+  closeModal('stockOutModal');
+  showNotification('Chiqim qilindi!', 'success');
+});
+
+// CART & SELLING
+function loadSellProducts() {
+  const container = document.getElementById('sellProductsGrid');
+  const availableProducts = allProducts.filter(p => p.stock > 0);
+  
+  if (availableProducts.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">Tovar topilmadi yoki ombor bo\'sh.</div></div>';
+    return;
+  }
+  
+  const html = availableProducts.map(product => `
+    <div class="product-card">
+      <img src="${product.image || 'https://via.placeholder.com/200?text=Rasm+yo\'q'}" 
+           class="product-img" alt="${product.name}" />
+      <div class="product-name">${product.name}</div>
+      <div class="product-volume">${product.volume ? product.volume + ' L' : 'Hajmsiz'}</div>
+      <div class="product-price">${formatCurrency(product.price)}</div>
+      <div class="product-stock">Mavjud: <strong>${product.stock}</strong></div>
+      <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" 
+              onclick="addToCart('${product.id}')">
+        🛒 Savatga qo'shish
+      </button>
+    </div>
+  `).join('');
+  
+  container.innerHTML = html;
+}
+
+window.addToCart = function(productId) {
+  const product = allProducts.find(p => p.id === productId);
+  if (!product || product.stock <= 0) {
+    showNotification('Tovar mavjud emas!', 'error');
+    return;
+  }
+  
+  const cartItem = cart.find(item => item.productId === productId);
+  
+  if (cartItem) {
+    if (cartItem.quantity >= product.stock) {
+      showNotification('Zaxirada yetarli tovar yo\'q!', 'warning');
+      return;
+    }
+    cartItem.quantity++;
+  } else {
+    cart.push({
+      productId: product.id,
+      name: product.name,
+      volume: product.volume,
+      price: product.price,
+      quantity: 1
+    });
+  }
+  
+  updateCartUI();
+  showNotification('Savatga qo\'shildi!', 'success');
+};
+
+function updateCartUI() {
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  document.getElementById('cartCount').textContent = cartCount;
+  document.getElementById('cartTotal').textContent = formatCurrency(cartTotal);
+  
+  if (cartCount > 0) {
+    document.getElementById('cartFloat').classList.add('active');
+  } else {
+    document.getElementById('cartFloat').classList.remove('active');
+  }
+}
+
+document.getElementById('viewCartBtn').addEventListener('click', () => {
+  if (cart.length === 0) {
+    showNotification('Savat bo\'sh!', 'warning');
+    return;
+  }
+  
+  const cartItemsHtml = cart.map((item, index) => `
+    <div style="display: flex; justify-content: space-between; align-items: center; 
+                padding: 15px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px;">
+      <div>
+        <strong>${item.name}</strong> ${item.volume ? '(' + item.volume + ' L)' : ''}
+        <div style="color: #718096;">${formatCurrency(item.price)} × ${item.quantity}</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <strong style="font-size: 18px;">${formatCurrency(item.price * item.quantity)}</strong>
+        <button class="btn btn-danger" onclick="removeFromCart(${index})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+  
+  document.getElementById('cartItems').innerHTML = cartItemsHtml;
+  
+  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  document.getElementById('cartModalTotal').textContent = formatCurrency(total);
+  
+  openModal('cartModal');
+});
+
+window.removeFromCart = function(index) {
+  cart.splice(index, 1);
+  updateCartUI();
+  document.getElementById('viewCartBtn').click();
+  if (cart.length === 0) closeModal('cartModal');
+};
+
+document.getElementById('clearCartBtn').addEventListener('click', () => {
+  cart = [];
+  updateCartUI();
+});
+
+document.getElementById('clearCartModalBtn').addEventListener('click', () => {
+  cart = [];
+  updateCartUI();
+  closeModal('cartModal');
+});
+
+// NAQD SOTISH (Cash sale)
+document.getElementById('checkoutBtn').addEventListener('click', async () => {
+  if (cart.length === 0) {
+    showNotification('Savat bo\'sh!', 'warning');
+    return;
+  }
+  
+  // Check stock
+  for (const item of cart) {
+    const product = allProducts.find(p => p.id === item.productId);
+    if (!product || product.stock < item.quantity) {
+      showNotification(`${item.name} - zaxirada yetarli emas!`, 'error');
+      return;
+    }
+  }
+  
+  const saleId = generateId();
+  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  // Save sale
+  await set(ref(db, 'sales/' + saleId), {
+    items: cart,
+    total,
+    paymentType: 'cash',
+    seller: currentUser,
+    timestamp: Date.now()
+  });
+  
+  // Update product stocks
+  for (const item of cart) {
+    const product = allProducts.find(p => p.id === item.productId);
+    const newStock = product.stock - item.quantity;
+    await update(ref(db, 'products/' + item.productId), { stock: newStock });
+  }
+  
+  cart = [];
+  updateCartUI();
+  closeModal('cartModal');
+  showNotification('Savdo muvaffaqiyatli yakunlandi!', 'success');
+});
+
+// QARZGA SOTISH (Debt sale) - YANGI FUNKSIYA
+document.getElementById('debtCheckoutBtn').addEventListener('click', () => {
+  if (cart.length === 0) {
+    showNotification('Savat bo\'sh!', 'warning');
+    return;
+  }
+  
+  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  document.getElementById('debtAmount').textContent = formatCurrency(total);
+  
+  // Load existing organizations and persons
+  loadDebtorSuggestions();
+  
+  // Reset form
+  document.getElementById('debtorType').value = '';
+  document.getElementById('organizationName').value = '';
+  document.getElementById('personName').value = '';
+  document.getElementById('debtorPhone').value = '';
+  document.getElementById('debtNote').value = '';
+  document.getElementById('organizationGroup').style.display = 'none';
+  
+  closeModal('cartModal');
+  openModal('debtModal');
+});
+
+// Debtor type change
+document.getElementById('debtorType').addEventListener('change', (e) => {
+  if (e.target.value === 'organization') {
+    document.getElementById('organizationGroup').style.display = 'block';
+  } else {
+    document.getElementById('organizationGroup').style.display = 'none';
+    document.getElementById('organizationName').value = '';
+  }
+});
+
+function loadDebtorSuggestions() {
+  // Organizations
+  const organizations = [...new Set(allDebtors
+    .filter(d => d.type === 'organization')
+    .map(d => d.organizationName))];
+  
+  const orgList = document.getElementById('organizationList');
+  orgList.innerHTML = organizations.map(org => `<option value="${org}">`).join('');
+  
+  // Persons
+  const persons = [...new Set(allDebtors.map(d => d.personName))];
+  const personList = document.getElementById('personList');
+  personList.innerHTML = persons.map(person => `<option value="${person}">`).join('');
+}
+
+// Save debt sale
+document.getElementById('saveDebtBtn').addEventListener('click', async () => {
+  const debtorType = document.getElementById('debtorType').value;
+  const organizationName = document.getElementById('organizationName').value.trim();
+  const personName = document.getElementById('personName').value.trim();
+  const phone = document.getElementById('debtorPhone').value.trim();
+  const note = document.getElementById('debtNote').value.trim();
+  
+  if (!debtorType) {
+    showNotification('Turini tanlang!', 'warning');
+    return;
+  }
+  
+  if (debtorType === 'organization' && !organizationName) {
+    showNotification('Tashkilot nomini kiriting!', 'warning');
+    return;
+  }
+  
+  if (!personName) {
+    showNotification('Xaridor ismini kiriting!', 'warning');
+    return;
+  }
+  
+  // Check if debtor exists
+  const debtorKey = debtorType === 'organization' ? organizationName : personName;
+  let debtor = allDebtors.find(d => 
+    d.type === debtorType && 
+    (d.type === 'organization' ? d.organizationName === organizationName : d.personName === personName)
+  );
+  
+  // If new debtor, need to create credentials
+  if (!debtor) {
+    currentDebtorId = null;
+    document.getElementById('credentialDebtorName').textContent = 
+      debtorType === 'organization' 
+        ? `${organizationName} tashkiloti` 
+        : personName;
+    
+    // Generate login suggestion
+    const loginSuggestion = debtorType === 'organization'
+      ? organizationName.toLowerCase().replace(/\s+/g, '_')
+      : personName.toLowerCase().replace(/\s+/g, '_');
+    
+    document.getElementById('debtorLogin').value = loginSuggestion;
+    document.getElementById('debtorPassword').value = '';
+    
+    // Store temp data
+    window.tempDebtData = {
+      debtorType, organizationName, personName, phone, note
+    };
+    
+    closeModal('debtModal');
+    openModal('createCredentialsModal');
+  } else {
+    // Existing debtor, proceed with sale
+    await processDebtSale(debtor.id);
+  }
+});
+
+// Generate random password
+document.getElementById('generatePasswordBtn').addEventListener('click', () => {
+  const password = generatePassword();
+  document.getElementById('debtorPassword').value = password;
+});
+
+// Save credentials and proceed
+document.getElementById('saveCredentialsBtn').addEventListener('click', async () => {
+  const login = document.getElementById('debtorLogin').value.trim();
+  const password = document.getElementById('debtorPassword').value.trim();
+  
+  if (!login || login.length < 3) {
+    showNotification('Login kamida 3 belgidan iborat bo\'lishi kerak!', 'warning');
+    return;
+  }
+  
+  if (!password || password.length < 6) {
+    showNotification('Parol kamida 6 belgidan iborat bo\'lishi kerak!', 'warning');
+    return;
+  }
+  
+  // Check if login exists
+  const existingDebtor = allDebtors.find(d => d.login === login);
+  if (existingDebtor) {
+    showNotification('Bu login band! Boshqa login tanlang.', 'error');
+    return;
+  }
+  
+  // Create new debtor
+  const debtorId = generateId();
+  const tempData = window.tempDebtData;
+  
+  await set(ref(db, 'debtors/' + debtorId), {
+    type: tempData.debtorType,
+    organizationName: tempData.organizationName || '',
+    personName: tempData.personName,
+    phone: tempData.phone,
+    login,
+    password,
+    createdAt: Date.now(),
+    createdBy: currentUser
+  });
+  
+  closeModal('createCredentialsModal');
+  
+  // Show credentials to user
+  showNotification(`Login: ${login} | Parol: ${password}`, 'success');
+  
+  // Proceed with sale
+  await processDebtSale(debtorId);
+});
+
+// Process debt sale
+async function processDebtSale(debtorId) {
+  // Check stock
+  for (const item of cart) {
+    const product = allProducts.find(p => p.id === item.productId);
+    if (!product || product.stock < item.quantity) {
+      showNotification(`${item.name} - zaxirada yetarli emas!`, 'error');
+      return;
+    }
+  }
+  
+  const saleId = generateId();
+  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const tempData = window.tempDebtData || {};
+  
+  // Save sale
+  await set(ref(db, 'sales/' + saleId), {
+    items: cart,
+    total,
+    paymentType: 'debt',
+    debtorId,
+    seller: currentUser,
+    timestamp: Date.now()
+  });
+  
+  // Save debt record
+  const debtId = generateId();
+  await set(ref(db, 'debts/' + debtId), {
+    debtorId,
+    saleId,
+    amount: total,
+    remainingAmount: total,
+    paidAmount: 0,
+    items: cart,
+    note: tempData.note || '',
+    status: 'active',
+    seller: currentUser,
+    createdAt: Date.now()
+  });
+  
+  // Update product stocks
+  for (const item of cart) {
+    const product = allProducts.find(p => p.id === item.productId);
+    const newStock = product.stock - item.quantity;
+    await update(ref(db, 'products/' + item.productId), { stock: newStock });
+  }
+  
+  cart = [];
+  updateCartUI();
+  window.tempDebtData = null;
+  
+  showNotification('Qarzga sotish muvaffaqiyatli yakunlandi!', 'success');
+}
+
+// QARZLAR SAHIFASI (Debts page)
+function loadDebts() {
+  const typeFilter = document.getElementById('debtTypeFilter')?.value || 'all';
+  const statusFilter = document.getElementById('debtStatusFilter')?.value || 'active';
+  
+  let filteredDebts = allDebts;
+  
+  // Filter by status
+  if (statusFilter === 'active') {
+    filteredDebts = filteredDebts.filter(d => d.status === 'active');
+  } else if (statusFilter === 'paid') {
+    filteredDebts = filteredDebts.filter(d => d.status === 'paid');
+  }
+  
+  // Filter by type
+  if (typeFilter !== 'all') {
+    filteredDebts = filteredDebts.filter(d => {
+      const debtor = allDebtors.find(deb => deb.id === d.debtorId);
+      return debtor && debtor.type === typeFilter;
+    });
+  }
+  
+  const container = document.getElementById('debtsTable');
+  
+  if (filteredDebts.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Qarzlar yo\'q.</div></div>';
+    return;
+  }
+  
+  // Group by debtor
+  const debtorGroups = {};
+  filteredDebts.forEach(debt => {
+    if (!debtorGroups[debt.debtorId]) {
+      debtorGroups[debt.debtorId] = [];
+    }
+    debtorGroups[debt.debtorId].push(debt);
+  });
+  
+  const html = Object.entries(debtorGroups).map(([debtorId, debts]) => {
+    const debtor = allDebtors.find(d => d.id === debtorId);
+    if (!debtor) return '';
+    
+    const totalDebt = debts.reduce((sum, d) => sum + (d.remainingAmount || 0), 0);
+    const paidTotal = debts.reduce((sum, d) => sum + (d.paidAmount || 0), 0);
+    
+    const debtRows = debts.map(debt => `
+      <tr>
+        <td>${formatDate(debt.createdAt)}</td>
+        <td>${debt.items.map(i => `${i.name} (${i.quantity}x)`).join(', ')}</td>
+        <td>${formatCurrency(debt.amount)}</td>
+        <td>${formatCurrency(debt.paidAmount || 0)}</td>
+        <td><strong style="color: ${debt.remainingAmount > 0 ? '#f56565' : '#48bb78'}">
+          ${formatCurrency(debt.remainingAmount || debt.amount)}
+        </strong></td>
+        <td>${debt.seller}</td>
+        <td>
+          ${debt.status === 'active' 
+            ? `<button class="btn btn-success btn-sm" onclick="openPayDebt('${debtorId}')">💰 To'lash</button>` 
+            : '<span class="badge badge-success">To\'langan</span>'}
+        </td>
+      </tr>
+    `).join('');
+    
+    return `
+      <div style="margin-bottom: 30px; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; align-items: center;">
+          <div>
+            <h3 style="margin-bottom: 5px;">
+              ${debtor.type === 'organization' ? '🏢 ' + debtor.organizationName : '👤 ' + debtor.personName}
+            </h3>
+            <small style="color: #718096;">
+              Login: ${debtor.login} | 
+              ${debtor.phone ? 'Tel: ' + debtor.phone : ''}
+            </small>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 24px; font-weight: bold; color: ${totalDebt > 0 ? '#f56565' : '#48bb78'};">
+              ${formatCurrency(totalDebt)}
+            </div>
+            <small style="color: #718096;">Jami qarz</small>
+          </div>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Sana</th>
+              <th>Tovarlar</th>
+              <th>Summa</th>
+              <th>To'langan</th>
+              <th>Qolgan</th>
+              <th>Sotuvchi</th>
+              <th>Amal</th>
+            </tr>
+          </thead>
+          <tbody>${debtRows}</tbody>
+        </table>
+      </div>
+    `;
+  }).join('');
+  
+  container.innerHTML = html;
+}
+
+// Event listeners for debt filters
+document.getElementById('debtTypeFilter')?.addEventListener('change', loadDebts);
+document.getElementById('debtStatusFilter')?.addEventListener('change', loadDebts);
+
+// QARZ TO'LASH (Pay debt)
+window.openPayDebt = function(debtorId) {
+  const debtor = allDebtors.find(d => d.id === debtorId);
+  if (!debtor) return;
+  
+  const debtorDebts = allDebts.filter(d => d.debtorId === debtorId && d.status === 'active');
+  const totalDebt = debtorDebts.reduce((sum, d) => sum + (d.remainingAmount || d.amount), 0);
+  
+  currentDebtorId = debtorId;
+  
+  const debtorName = debtor.type === 'organization' 
+    ? `${debtor.organizationName} (${debtor.personName})` 
+    : debtor.personName;
+  
+  document.getElementById('payDebtorName').textContent = debtorName;
+  document.getElementById('payDebtTotal').textContent = formatCurrency(totalDebt);
+  document.getElementById('paymentAmount').value = '';
+  document.getElementById('paymentNote').value = '';
+  
+  openModal('payDebtModal');
+};
+
+document.getElementById('payFullBtn').addEventListener('click', () => {
+  const debtorDebts = allDebts.filter(d => d.debtorId === currentDebtorId && d.status === 'active');
+  const totalDebt = debtorDebts.reduce((sum, d) => sum + (d.remainingAmount || d.amount), 0);
+  document.getElementById('paymentAmount').value = totalDebt;
+});
+
+document.getElementById('savePaymentBtn').addEventListener('click', async () => {
+  const paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
+  const note = document.getElementById('paymentNote').value.trim();
+  
+  if (!paymentAmount || paymentAmount <= 0) {
+    showNotification('To\'lov summasini kiriting!', 'warning');
+    return;
+  }
+  
+  const debtorDebts = allDebts
+    .filter(d => d.debtorId === currentDebtorId && d.status === 'active')
+    .sort((a, b) => a.createdAt - b.createdAt); // Oldest first
+  
+  const totalDebt = debtorDebts.reduce((sum, d) => sum + (d.remainingAmount || d.amount), 0);
+  
+  if (paymentAmount > totalDebt) {
+    showNotification('To\'lov summasi qarzdan ko\'p!', 'error');
+    return;
+  }
+  
+  let remainingPayment = paymentAmount;
+  
+  // Distribute payment across debts
+  for (const debt of debtorDebts) {
+    if (remainingPayment <= 0) break;
+    
+    const debtRemaining = debt.remainingAmount || debt.amount;
+    const payForThis = Math.min(remainingPayment, debtRemaining);
+    
+    const newPaidAmount = (debt.paidAmount || 0) + payForThis;
+    const newRemainingAmount = debt.amount - newPaidAmount;
+    const newStatus = newRemainingAmount <= 0 ? 'paid' : 'active';
+    
+    await update(ref(db, 'debts/' + debt.id), {
+      paidAmount: newPaidAmount,
+      remainingAmount: newRemainingAmount,
+      status: newStatus,
+      lastPayment: {
+        amount: payForThis,
+        date: Date.now(),
+        note,
+        receivedBy: currentUser
+      }
+    });
+    
+    remainingPayment -= payForThis;
+  }
+  
+  closeModal('payDebtModal');
+  showNotification('To\'lov qabul qilindi!', 'success');
+  loadDebts();
+});
+
+// SALES HISTORY
+function loadSalesHistory() {
+  const container = document.getElementById('salesTable');
+  
+  if (allSales.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Savdo tarixi topilmadi.</div></div>';
+    return;
+  }
+  
+  const html = `
+    <table>
+      <thead>
+        <tr>
+          <th>Sana/Vaqt</th>
+          <th>Tovarlar</th>
+          <th>Jami</th>
+          <th>Turi</th>
+          <th>Sotuvchi</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${allSales.map(sale => {
+          const items = sale.items.map(i => `${i.name} (${i.quantity}x)`).join(', ');
+          const paymentBadge = sale.paymentType === 'cash' 
+            ? '<span class="badge badge-success">Naqd</span>'
+            : '<span class="badge badge-warning">Qarz</span>';
+          
+          return `
+            <tr>
+              <td>${formatDate(sale.timestamp)}</td>
+              <td>${items}</td>
+              <td><strong>${formatCurrency(sale.total)}</strong></td>
+              <td>${paymentBadge}</td>
+              <td>${sale.seller}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+  
+  container.innerHTML = html;
+}
+
+// INVENTORY HISTORY
+function loadInventoryHistory() {
+  const container = document.getElementById('inventoryTable');
+  
+  if (allInventory.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Kirim/Chiqim tarixi topilmadi.</div></div>';
+    return;
+  }
+  
+  const html = `
+    <table>
+      <thead>
+        <tr>
+          <th>Sana/Vaqt</th>
+          <th>Tovar</th>
+          <th>Hajm</th>
+          <th>Turi</th>
+          <th>Miqdor</th>
+          <th>Sabab</th>
+          <th>Natija</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${allInventory.map(inv => {
+          const typeBadge = inv.type === 'in' 
+            ? '<span class="badge badge-success">Kirim</span>'
+            : '<span class="badge badge-danger">Chiqim</span>';
+          
+          return `
+            <tr>
+              <td>${formatDate(inv.timestamp)}</td>
+              <td>${inv.productName}</td>
+              <td>${inv.volume ? inv.volume + ' L' : '—'}</td>
+              <td>${typeBadge}</td>
+              <td>${inv.amount}</td>
+              <td>${inv.reason || '—'}</td>
+              <td><strong>${inv.resultStock}</strong></td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+  
+  container.innerHTML = html;
+}
+
+// MY SALES
+function loadMySales() {
+  const mySales = allSales.filter(s => s.seller === currentUser);
+  const container = document.getElementById('mySalesTable');
+  
+  if (mySales.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Savdolar yo\'q.</div></div>';
+    return;
+  }
+  
+  const html = `
+    <table>
+      <thead>
+        <tr>
+          <th>Vaqt</th>
+          <th>Tovarlar</th>
+          <th>Jami</th>
+          <th>Turi</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${mySales.map(sale => {
+          const items = sale.items.map(i => `${i.name} (${i.quantity}x)`).join(', ');
+          const paymentBadge = sale.paymentType === 'cash' 
+            ? '<span class="badge badge-success">Naqd</span>'
+            : '<span class="badge badge-warning">Qarz</span>';
+          
+          return `
+            <tr>
+              <td>${formatDate(sale.timestamp)}</td>
+              <td>${items}</td>
+              <td><strong>${formatCurrency(sale.total)}</strong></td>
+              <td>${paymentBadge}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+  
+  container.innerHTML = html;
+}
+
+// Initialize on load
+window.addEventListener('load', () => {
+  document.getElementById('loadingScreen').style.display = 'none';
+  showNotification('Tizim tayyor!', 'success');
+});
+
+</script>
+</body>
+</html>
