@@ -2,7 +2,7 @@
   "id": "FEAT-004",
   "type": "fix",
   "description": "Fix three bugs found in code review: (1) saveDebt loses item details for existing debtors because cart is cleared before saveDebt is called, (2) overpayment is silently discarded in both Market.html and report.html, (3) no debt deletion/cleanup mechanism in Market.html for fully-paid debtors.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Bug 1: In Market.html, capture cart items BEFORE calling completeSale for existing debtors, and pass them to saveDebt",
     "Bug 1: Modify saveDebt to accept a cartItems parameter instead of relying on the global cart array",
@@ -21,5 +21,5 @@
     "Check that delete button exists in the paid debtor card"
   ],
   "blocked_reason": null,
-  "findings": null
+  "findings": "All three bugs fixed and verified. JavaScript syntax validates cleanly in both files. (1) saveDebt now receives cartItems as a parameter - existing debtors get cart captured before completeSale clears it, new debtors pass cartItems from pendingDebtData. (2) Both processPayment functions now reject payments exceeding total remaining debt with a user-friendly Uzbek error message showing the max allowed. (3) Fully-paid debtor cards in Market.html now show a delete button that calls clearDebtorDebts to remove paid debt records from Firebase."
 }
