@@ -892,6 +892,13 @@
                 return;
             }
 
+            // Validate: payment should not exceed total remaining debt
+            const totalRemainingDebt = activeDebts.reduce((sum, d) => sum + (d.remainingAmount || 0), 0);
+            if (amount > totalRemainingDebt) {
+                showToast("To'lov summasi qarz qoldig'idan oshib ketdi! Maksimal: " + formatMoney(totalRemainingDebt), 'error');
+                return;
+            }
+
             let remainingPayment = amount;
             const updates = {};
 

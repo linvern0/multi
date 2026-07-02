@@ -1383,9 +1383,10 @@
             const existingDebtor = findExistingDebtor(type, orgName, personName);
 
             if (existingDebtor) {
-                // Existing debtor - just save debt and sale
+                // Existing debtor - capture cart items before completeSale clears the cart
+                const cartItems = [...cart];
                 const saleId = completeSale('debt', existingDebtor.id);
-                saveDebt(existingDebtor.id, saleId, total, note, personName);
+                saveDebt(existingDebtor.id, saleId, total, note, personName, cartItems);
                 closeModal('debtModal');
                 showToast('Qarz saqlandi!', 'success');
             } else {
@@ -1437,18 +1438,25 @@
             const debtorRef = db.ref('debtors').push(debtorData);
             const debtorId = debtorRef.key;
 
-            // Complete the sale
+            // Complete the sale (cartItems already saved in pendingDebtData before cart is cleared)
             const saleId = completeSale('debt', debtorId);
 
-            // Save debt record
-            saveDebt(debtorId, saleId, total, note, personName);
+            // Save debt record using cartItems from pendingDebtData
+            saveDebt(debtorId, saleId, total, note, personName, cartItems);
 
             closeModal('loginCreateModal');
             pendingDebtData = null;
             showToast('Qarzdor yaratildi va qarz saqlandi!', 'success');
         }
 
-        function saveDebt(debtorId, saleId, amount, note, personName) {
+        function saveDebt(debtorId, saleId, amount, note, personName, cartItems) {
+            const items = (cartItems || []).map(item => ({
+                productId: item.productId,
+                name: item.name,
+                volume: item.volume,
+                price: item.price,
+                quantity: item.quantity
+            }));
             const debtData = {
                 debtorId,
                 saleId: saleId || '',
@@ -1456,19 +1464,7 @@
                 paidAmount: 0,
                 remainingAmount: amount,
                 status: 'active',
-                items: cart.length > 0 ? cart.map(item => ({
-                    productId: item.productId,
-                    name: item.name,
-                    volume: item.volume,
-                    price: item.price,
-                    quantity: item.quantity
-                })) : (pendingDebtData ? pendingDebtData.cartItems.map(item => ({
-                    productId: item.productId,
-                    name: item.name,
-                    volume: item.volume,
-                    price: item.price,
-                    quantity: item.quantity
-                })) : []),
+                items,
                 note: note || '',
                 personName: personName || '',
                 seller: currentUser === 'admin' ? 'Admin' : 'Sotuvchi',
@@ -1518,7 +1514,7 @@
                 const progress = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
 
                 if (totalRemaining <= 0 && debtsList.length > 0) {
-                    // All paid - show differently
+                    // All paid - show differently with delete option
                     html += `
                         <div class="debtor-card" style="border-left-color:var(--success);opacity:0.7;">
                             <div class="debtor-header">
@@ -1529,6 +1525,9 @@
                                 <span class="badge badge-success">To'langan</span>
                             </div>
                             <div class="progress"><div class="progress-bar" style="width:100%"></div></div>
+                            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+                                <button class="btn btn-danger btn-sm" onclick="clearDebtorDebts('${id}')">🗑️ Qarzlarni o'chirish</button>
+                            </div>
                         </div>
                     `;
                 } else if (debtsList.length > 0) {
@@ -1650,6 +1649,13 @@
                 return;
             }
 
+            // Validate: payment should not exceed total remaining debt
+            const totalRemainingDebt = activeDebts.reduce((sum, d) => sum + (d.remainingAmount || 0), 0);
+            if (amount > totalRemainingDebt) {
+                showToast(`To'lov summasi qarz qoldig'idan oshib ketdi! Maksimal: ${formatMoney(totalRemainingDebt)}`, 'error');
+                return;
+            }
+
             let remainingPayment = amount;
 
             // Distribute payment FIFO
@@ -1681,6 +1687,28 @@
             }).catch(err => {
                 showToast('Xatolik: ' + err.message, 'error');
             });
+        }
+
+        function clearDebtorDebts(debtorId) {
+            if (!confirm("Bu qarzdorning barcha to'langan qarzlarini o'chirishni xohlaysizmi?")) return;
+
+            const paidDebts = Object.entries(debts)
+                .filter(([id, d]) => d.debtorId === debtorId && d.status === 'paid');
+
+            const updates = {};
+            paidDebts.forEach(([id, d]) => {
+                updates['debts/' + id] = null;
+            });
+
+            if (Object.keys(updates).length > 0) {
+                db.ref().update(updates).then(() => {
+                    showToast("To'langan qarzlar o'chirildi!", 'success');
+                }).catch(err => {
+                    showToast('Xatolik: ' + err.message, 'error');
+                });
+            } else {
+                showToast("O'chirish uchun to'langan qarz topilmadi!", 'error');
+            }
         }
 
         // ==================== INVENTORY ====================
