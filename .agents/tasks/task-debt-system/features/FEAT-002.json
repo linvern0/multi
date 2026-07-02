@@ -1,0 +1,44 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Create report.html - the reports system with a new 'Qarzlar' (Debts) tab added alongside existing sales reports and inventory reports. This file provides admin-level analytics and debt management overview.",
+  "status": "completed",
+  "steps": [
+    "Create /projects/sandbox/multi/report.html as a complete single-file HTML application with inline CSS and JavaScript",
+    "Include all existing functionality from the user-provided report.html structure: PIN login (admin only), tabs for 'Hisobot' (sales report by product), 'Zaxira' (inventory/stock report), and 'Admin' section",
+    "Include Firebase SDK from CDN and placeholder firebaseConfig (same structure as Market.html)",
+    "Add a new 'Qarzlar' tab in the navigation alongside existing tabs (Hisobot, Zaxira, Admin)",
+    "In the Qarzlar tab, show statistics cards at the top: Qarzdorlar soni (number of debtors), Ochiq qarzlar summasi (total open debts amount), To'langan qarzlar (paid debts total), Qarzga sotilgan savdolar soni (number of credit sales)",
+    "Add filter controls: All/Tashkilotlar/Shaxslar filter, Ochiq/To'langan/Barchasi status filter, Search input for name/organization",
+    "Display a table/card list of each debtor showing: name, organization (if applicable), login, phone, total debt amount (jami qarz), paid amount (to'langan), remaining amount (qolgan), number of purchases",
+    "For each debtor, allow expanding to see individual debt records (date, items, amount, payment status)",
+    "Add 'To'lash' (Pay) button for each debtor that opens a payment modal (same logic as in Market.html - distribute to oldest debts first)",
+    "Add ability to fully clear/delete a debt when it's paid (mark as paid, optionally remove)",
+    "Add CSV export functionality for the debts report",
+    "Ensure real-time Firebase listeners for all debt data",
+    "All UI text must be in Uzbek language"
+  ],
+  "acceptance_criteria": [
+    "report.html file exists at /projects/sandbox/multi/report.html",
+    "File opens without JavaScript errors (valid HTML/JS syntax)",
+    "Contains Firebase SDK includes and placeholder config",
+    "PIN login works for admin",
+    "Has 'Qarzlar' tab in navigation",
+    "Shows debt statistics (debtor count, open debts, paid debts, credit sales count)",
+    "Has filter controls for type, status, and search",
+    "Displays debtor list with debt details",
+    "Payment functionality works with FIFO distribution",
+    "CSV export works for debt data"
+  ],
+  "verification": [
+    "Verify file exists: ls /projects/sandbox/multi/report.html",
+    "Check HTML contains Qarzlar tab and navigation element",
+    "Verify statistics section exists with appropriate IDs/classes",
+    "Verify filter controls exist",
+    "Verify debtor table/list structure exists",
+    "Verify payment modal exists",
+    "Verify CSV export function exists"
+  ],
+  "blocked_reason": null,
+  "findings": "report.html created successfully with all required functionality: PIN login (admin only), 4 tabs (Hisobot, Zaxira, Qarzlar, Admin), debt statistics, type/status/search filters, debtor cards with detail view, FIFO payment modal, CSV export, and real-time Firebase listeners. Used HTML entities for emojis in some places due to Python string encoding. File is 1022 lines. All JS brace/paren/bracket counts match."
+}

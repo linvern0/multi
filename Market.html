@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market - Boshqaruv Tizimi</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #3f37c9;
+            --success: #06d6a0;
+            --danger: #ef476f;
+            --warning: #ffd166;
+            --info: #118ab2;
+            --dark: #073b4c;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --white: #ffffff;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --radius: 12px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            color: var(--dark);
+            min-height: 100vh;
+        }
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; color: white;
+        }
+        .loading-screen .spinner {
+            width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Login Screen */
+        .login-screen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            align-items: center; justify-content: center; z-index: 9998;
+        }
+        .login-card {
+            background: white; border-radius: var(--radius); padding: 40px;
+            width: 90%; max-width: 400px; box-shadow: var(--shadow); text-align: center;
+        }
+        .login-card h2 { margin-bottom: 10px; color: var(--dark); }
+        .login-card p { color: var(--gray); margin-bottom: 25px; }
+        .role-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+        .role-btn {
+            flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;
+            background: white; cursor: pointer; font-size: 14px; font-weight: 600;
+            transition: all 0.3s;
+        }
+        .role-btn.active { border-color: var(--primary); background: #eef1ff; color: var(--primary); }
+        .pin-input {
+            width: 100%; padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px;
+            font-size: 24px; text-align: center; letter-spacing: 10px;
+            outline: none; transition: border-color 0.3s;
+        }
+        .pin-input:focus { border-color: var(--primary); }
+        .login-btn {
+            width: 100%; padding: 15px; background: var(--primary); color: white;
+            border: none; border-radius: 8px; font-size: 16px; font-weight: 600;
+            cursor: pointer; margin-top: 15px; transition: background 0.3s;
+        }
+        .login-btn:hover { background: var(--primary-dark); }
+        .login-error { color: var(--danger); margin-top: 10px; font-size: 14px; display: none; }
+
+        /* Main Layout */
+        .app-container { display: none; padding-bottom: 70px; }
+        .header {
+            background: white; padding: 15px 20px; box-shadow: var(--shadow);
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .header h1 { font-size: 20px; color: var(--primary); }
+        .header .user-info { display: flex; align-items: center; gap: 10px; }
+        .header .user-badge {
+            background: #eef1ff; color: var(--primary); padding: 5px 12px;
+            border-radius: 20px; font-size: 12px; font-weight: 600;
+        }
+        .logout-btn {
+            background: none; border: none; color: var(--danger);
+            cursor: pointer; font-size: 20px; padding: 5px;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex; background: white; padding: 0 10px;
+            overflow-x: auto; border-bottom: 1px solid #e0e0e0;
+        }
+        .nav-tab {
+            padding: 12px 20px; border: none; background: none;
+            font-size: 14px; font-weight: 500; color: var(--gray);
+            cursor: pointer; border-bottom: 3px solid transparent;
+            white-space: nowrap; transition: all 0.3s;
+        }
+        .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        /* Content Sections */
+        .content { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Cards */
+        .card {
+            background: white; border-radius: var(--radius); padding: 20px;
+            box-shadow: var(--shadow); margin-bottom: 15px;
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .card-title { font-size: 18px; font-weight: 600; }
+
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card {
+            background: white; border-radius: var(--radius); padding: 20px;
+            box-shadow: var(--shadow); text-align: center;
+        }
+        .stat-value { font-size: 28px; font-weight: 700; color: var(--primary); }
+        .stat-label { font-size: 13px; color: var(--gray); margin-top: 5px; }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all 0.3s; display: inline-flex; align-items: center; gap: 5px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: var(--dark); }
+        .btn-info { background: var(--info); color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-block { width: 100%; justify-content: center; }
+
+        /* Inputs */
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: var(--dark); }
+        .form-input, .form-select {
+            width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;
+            font-size: 14px; outline: none; transition: border-color 0.3s;
+        }
+        .form-input:focus, .form-select:focus { border-color: var(--primary); }
+        .form-textarea { resize: vertical; min-height: 80px; }
+
+        /* Tables */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e0e0e0; font-size: 14px; }
+        th { background: #f8f9fa; font-weight: 600; color: var(--dark); }
+        tr:hover { background: #f8f9fa; }
+
+        /* Product Grid */
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .product-card {
+            background: white; border-radius: var(--radius); padding: 15px;
+            box-shadow: var(--shadow); cursor: pointer; transition: all 0.3s;
+            text-align: center; border: 2px solid transparent;
+        }
+        .product-card:hover { transform: translateY(-2px); border-color: var(--primary); }
+        .product-card .product-name { font-weight: 600; margin-bottom: 5px; font-size: 14px; }
+        .product-card .product-volume { color: var(--gray); font-size: 12px; margin-bottom: 8px; }
+        .product-card .product-price { color: var(--primary); font-weight: 700; font-size: 16px; }
+        .product-card .product-stock { font-size: 11px; color: var(--gray); margin-top: 5px; }
+
+        /* Search */
+        .search-box {
+            position: relative; margin-bottom: 20px;
+        }
+        .search-input {
+            width: 100%; padding: 12px 15px 12px 40px; border: 2px solid #e0e0e0;
+            border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.3s;
+        }
+        .search-input:focus { border-color: var(--primary); }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--gray); }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: none; align-items: center;
+            justify-content: center; z-index: 1000; padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white; border-radius: var(--radius); width: 100%;
+            max-width: 500px; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            padding: 20px; border-bottom: 1px solid #e0e0e0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-header h3 { font-size: 18px; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray); }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 15px 20px; border-top: 1px solid #e0e0e0; display: flex; gap: 10px; justify-content: flex-end; }
+
+        /* Cart Bar */
+        .cart-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: var(--primary); color: white; padding: 12px 20px;
+            display: none; align-items: center; justify-content: space-between;
+            z-index: 200; cursor: pointer;
+        }
+        .cart-bar.visible { display: flex; }
+        .cart-bar .cart-info { display: flex; align-items: center; gap: 10px; }
+        .cart-bar .cart-count {
+            background: white; color: var(--primary); width: 28px; height: 28px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px;
+        }
+        .cart-bar .cart-total { font-size: 18px; font-weight: 700; }
+
+        /* Cart Items */
+        .cart-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 0; border-bottom: 1px solid #f0f0f0;
+        }
+        .cart-item-info { flex: 1; }
+        .cart-item-name { font-weight: 600; font-size: 14px; }
+        .cart-item-detail { font-size: 12px; color: var(--gray); }
+        .cart-item-actions { display: flex; align-items: center; gap: 8px; }
+        .qty-btn {
+            width: 30px; height: 30px; border-radius: 50%; border: none;
+            background: #f0f0f0; cursor: pointer; font-size: 16px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .qty-btn:hover { background: #e0e0e0; }
+        .cart-item-qty { font-weight: 600; min-width: 25px; text-align: center; }
+        .cart-item-price { font-weight: 700; color: var(--primary); margin-left: 15px; min-width: 80px; text-align: right; }
+
+        /* Autocomplete */
+        .autocomplete-container { position: relative; }
+        .autocomplete-list {
+            position: absolute; top: 100%; left: 0; width: 100%;
+            background: white; border: 2px solid var(--primary); border-top: none;
+            border-radius: 0 0 8px 8px; max-height: 150px; overflow-y: auto;
+            z-index: 10; display: none;
+        }
+        .autocomplete-list.visible { display: block; }
+        .autocomplete-item {
+            padding: 10px 12px; cursor: pointer; font-size: 14px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .autocomplete-item:hover { background: #eef1ff; }
+
+        /* Badge */
+        .badge {
+            display: inline-block; padding: 3px 8px; border-radius: 12px;
+            font-size: 11px; font-weight: 600;
+        }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+
+        /* Progress bar */
+        .progress { background: #e9ecef; border-radius: 10px; height: 8px; overflow: hidden; }
+        .progress-bar { height: 100%; background: var(--success); border-radius: 10px; transition: width 0.3s; }
+
+        /* Debtor card */
+        .debtor-card {
+            background: white; border-radius: var(--radius); padding: 20px;
+            box-shadow: var(--shadow); margin-bottom: 15px;
+            border-left: 4px solid var(--primary);
+        }
+        .debtor-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .debtor-name { font-weight: 700; font-size: 16px; }
+        .debtor-type { font-size: 12px; color: var(--gray); }
+        .debtor-amount { font-size: 20px; font-weight: 700; color: var(--danger); }
+        .debtor-details { font-size: 13px; color: var(--gray); margin: 8px 0; }
+
+        /* Bottom nav (mobile) */
+        .bottom-nav {
+            display: none; position: fixed; bottom: 0; left: 0; width: 100%;
+            background: white; border-top: 1px solid #e0e0e0; z-index: 150;
+            padding: 8px 0;
+        }
+        .bottom-nav-items { display: flex; justify-content: space-around; }
+        .bottom-nav-item {
+            display: flex; flex-direction: column; align-items: center;
+            font-size: 10px; color: var(--gray); cursor: pointer; padding: 5px;
+        }
+        .bottom-nav-item.active { color: var(--primary); }
+        .bottom-nav-item svg { width: 22px; height: 22px; margin-bottom: 3px; }
+
+        /* Toast */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast {
+            background: white; border-radius: 8px; padding: 15px 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15); margin-bottom: 10px;
+            display: flex; align-items: center; gap: 10px; min-width: 280px;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast-success { border-left: 4px solid var(--success); }
+        .toast-error { border-left: 4px solid var(--danger); }
+        .toast-info { border-left: 4px solid var(--info); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .product-grid { grid-template-columns: repeat(2, 1fr); }
+            .nav-tabs { display: none; }
+            .bottom-nav { display: block; }
+            .content { padding: 15px; }
+            .app-container { padding-bottom: 130px; }
+        }
+
+        /* Seller view */
+        .seller-section { display: none; }
+        .seller-section.active { display: block; }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <p>Firebase bilan ulanmoqda...</p>
+    </div>
+
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-card">
+            <h2>🏪 Market</h2>
+            <p>Tizimga kirish uchun rolni tanlang va PIN kiriting</p>
+            <div class="role-selector">
+                <button class="role-btn active" data-role="admin" onclick="selectRole('admin')">👤 Admin</button>
+                <button class="role-btn" data-role="seller" onclick="selectRole('seller')">🛒 Sotuvchi</button>
+            </div>
+            <input type="password" class="pin-input" id="pinInput" maxlength="4" placeholder="****" inputmode="numeric">
+            <button class="login-btn" onclick="login()">Kirish</button>
+            <p class="login-error" id="loginError">PIN kod noto'g'ri!</p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="app-container" id="appContainer">
+        <!-- Header -->
+        <div class="header">
+            <h1>🏪 Market</h1>
+            <div class="user-info">
+                <span class="user-badge" id="userBadge">Admin</span>
+                <button class="logout-btn" onclick="logout()" title="Chiqish">⬅</button>
+            </div>
+        </div>
+
+        <!-- Admin Navigation -->
+        <div class="nav-tabs" id="adminNav">
+            <button class="nav-tab active" data-section="dashboard" onclick="switchSection('dashboard')">📊 Dashboard</button>
+            <button class="nav-tab" data-section="products" onclick="switchSection('products')">📦 Mahsulotlar</button>
+            <button class="nav-tab" data-section="selling" onclick="switchSection('selling')">🛒 Sotish</button>
+            <button class="nav-tab" data-section="sales" onclick="switchSection('sales')">📋 Savdolar</button>
+            <button class="nav-tab" data-section="debts" onclick="switchSection('debts')">💳 Qarzlar</button>
+            <button class="nav-tab" data-section="inventory" onclick="switchSection('inventory')">📥 Ombor</button>
+            <button class="nav-tab" data-section="settings" onclick="switchSection('settings')">⚙️ Sozlamalar</button>
+        </div>
+
+        <!-- Seller Navigation -->
+        <div class="nav-tabs" id="sellerNav" style="display:none;">
+            <button class="nav-tab active" data-section="selling" onclick="switchSection('selling')">🛒 Sotish</button>
+            <button class="nav-tab" data-section="my-sales" onclick="switchSection('my-sales')">📋 Savdolarim</button>
+        </div>
+
+        <div class="content">
+            <!-- Dashboard Section -->
+            <div class="section active" id="section-dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTotalSales">0</div>
+                        <div class="stat-label">Bugungi savdo</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTotalRevenue">0</div>
+                        <div class="stat-label">Bugungi tushum</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statProducts">0</div>
+                        <div class="stat-label">Mahsulotlar</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statDebts">0</div>
+                        <div class="stat-label">Ochiq qarzlar</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">So'nggi savdolar</span>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Sana</th><th>Summa</th><th>Turi</th><th>Sotuvchi</th></tr></thead>
+                            <tbody id="recentSalesTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Section -->
+            <div class="section" id="section-products">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Mahsulotlar</span>
+                        <button class="btn btn-primary" onclick="openProductModal()">+ Qo'shish</button>
+                    </div>
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" class="search-input" id="productSearch" placeholder="Mahsulot qidirish..." oninput="filterProducts()">
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Nomi</th><th>Hajmi</th><th>Narxi</th><th>Soni</th><th>Amallar</th></tr></thead>
+                            <tbody id="productsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selling Section -->
+            <div class="section" id="section-selling">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="sellingSearch" placeholder="Mahsulot qidirish..." oninput="filterSellingProducts()">
+                </div>
+                <div class="product-grid" id="sellingGrid"></div>
+            </div>
+
+            <!-- Sales History Section -->
+            <div class="section" id="section-sales">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Savdolar tarixi</span>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Sana</th><th>Mahsulotlar</th><th>Summa</th><th>Turi</th><th>Sotuvchi</th></tr></thead>
+                            <tbody id="salesTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debts Section -->
+            <div class="section" id="section-debts">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statDebtors">0</div>
+                        <div class="stat-label">Qarzdorlar soni</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTotalDebt">0</div>
+                        <div class="stat-label">Jami qarz</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statPaidDebt">0</div>
+                        <div class="stat-label">To'langan</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Qarzdorlar ro'yxati</span>
+                    </div>
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" class="search-input" id="debtSearch" placeholder="Qarzdor qidirish..." oninput="filterDebtors()">
+                    </div>
+                    <div id="debtorsList"></div>
+                </div>
+            </div>
+
+            <!-- Inventory Section -->
+            <div class="section" id="section-inventory">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Ombor harakatlari</span>
+                        <div style="display:flex;gap:10px;">
+                            <button class="btn btn-success btn-sm" onclick="openInventoryModal('in')">📥 Kirim</button>
+                            <button class="btn btn-danger btn-sm" onclick="openInventoryModal('out')">📤 Chiqim</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Sana</th><th>Mahsulot</th><th>Turi</th><th>Soni</th><th>Izoh</th></tr></thead>
+                            <tbody id="inventoryTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div class="section" id="section-settings">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Sozlamalar</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Admin PIN</label>
+                        <input type="text" class="form-input" id="adminPinSetting" maxlength="4">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Sotuvchi PIN</label>
+                        <input type="text" class="form-input" id="sellerPinSetting" maxlength="4">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveSettings()">Saqlash</button>
+                </div>
+            </div>
+
+            <!-- My Sales (Seller) -->
+            <div class="section" id="section-my-sales">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Mening savdolarim</span>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Sana</th><th>Mahsulotlar</th><th>Summa</th><th>Turi</th></tr></thead>
+                            <tbody id="mySalesTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Bar -->
+    <div class="cart-bar" id="cartBar" onclick="openCartModal()">
+        <div class="cart-info">
+            <div class="cart-count" id="cartCount">0</div>
+            <span>Savat</span>
+        </div>
+        <div class="cart-total" id="cartTotal">0 so'm</div>
+    </div>
+    <!-- Cart Modal -->
+    <div class="modal-overlay" id="cartModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🛒 Savat</h3>
+                <button class="modal-close" onclick="closeModal('cartModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="cartItems"></div>
+                <div style="margin-top:15px;padding-top:15px;border-top:2px solid #e0e0e0;">
+                    <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;">
+                        <span>Jami:</span>
+                        <span id="cartModalTotal">0 so'm</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="flex-direction:column;gap:10px;">
+                <button class="btn btn-success btn-block" onclick="completeSale('cash')">💵 Naqd sotish</button>
+                <button class="btn btn-info btn-block" onclick="openDebtModal()" style="background:#2196F3;">💳 Qarzga sotish</button>
+                <button class="btn btn-danger btn-block" onclick="clearCart()">🗑 Savatni tozalash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debt Modal -->
+    <div class="modal-overlay" id="debtModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>💳 Qarzga sotish</h3>
+                <button class="modal-close" onclick="closeModal('debtModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Turi</label>
+                    <select class="form-select" id="debtType" onchange="onDebtTypeChange()">
+                        <option value="organization">Tashkilot</option>
+                        <option value="individual">Shaxs</option>
+                    </select>
+                </div>
+                <div class="form-group" id="orgNameGroup">
+                    <label class="form-label">Tashkilot nomi</label>
+                    <div class="autocomplete-container">
+                        <input type="text" class="form-input" id="debtOrgName" placeholder="Tashkilot nomini kiriting..." oninput="onOrgNameInput()" onfocus="onOrgNameInput()">
+                        <div class="autocomplete-list" id="orgAutocomplete"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Xaridor ismi</label>
+                    <div class="autocomplete-container">
+                        <input type="text" class="form-input" id="debtPersonName" placeholder="Xaridor ismini kiriting..." oninput="onPersonNameInput()" onfocus="onPersonNameInput()">
+                        <div class="autocomplete-list" id="personAutocomplete"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Telefon (ixtiyoriy)</label>
+                    <input type="text" class="form-input" id="debtPhone" placeholder="+998...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Izoh (ixtiyoriy)</label>
+                    <textarea class="form-input form-textarea" id="debtNote" placeholder="Izoh..."></textarea>
+                </div>
+                <div style="background:#eef1ff;padding:15px;border-radius:8px;text-align:center;">
+                    <div style="font-size:13px;color:var(--gray);">Qarz summasi</div>
+                    <div style="font-size:24px;font-weight:700;color:var(--primary);" id="debtAmount">0 so'm</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-block" onclick="confirmDebtSale()">Tasdiqlash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login/Password Creation Modal -->
+    <div class="modal-overlay" id="loginCreateModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🔐 Login/Parol yaratish</h3>
+                <button class="modal-close" onclick="closeModal('loginCreateModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:15px;color:var(--gray);font-size:14px;">Yangi qarzdor uchun login va parol yarating. Bu ma'lumotlar qarzdorga beriladi.</p>
+                <div class="form-group">
+                    <label class="form-label">Login</label>
+                    <input type="text" class="form-input" id="newDebtorLogin" placeholder="Login kiriting...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Parol</label>
+                    <div style="display:flex;gap:10px;">
+                        <input type="text" class="form-input" id="newDebtorPassword" placeholder="Parol kiriting..." style="flex:1;">
+                        <button class="btn btn-info btn-sm" onclick="generatePassword()">🎲 Tasodifiy</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-block" onclick="saveDebtorLogin()">Saqlash va yakunlash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div class="modal-overlay" id="productModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="productModalTitle">Mahsulot qo'shish</h3>
+                <button class="modal-close" onclick="closeModal('productModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editProductId">
+                <div class="form-group">
+                    <label class="form-label">Mahsulot nomi</label>
+                    <input type="text" class="form-input" id="productName" placeholder="Nomi...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hajmi</label>
+                    <input type="text" class="form-input" id="productVolume" placeholder="Masalan: 1.5L, 500ml, 1kg...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Narxi (so'm)</label>
+                    <input type="number" class="form-input" id="productPrice" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Soni (omborda)</label>
+                    <input type="number" class="form-input" id="productStock" placeholder="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-block" onclick="saveProduct()">Saqlash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div class="modal-overlay" id="inventoryModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="inventoryModalTitle">Kirim</h3>
+                <button class="modal-close" onclick="closeModal('inventoryModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="inventoryType">
+                <div class="form-group">
+                    <label class="form-label">Mahsulot</label>
+                    <select class="form-select" id="inventoryProduct"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Soni</label>
+                    <input type="number" class="form-input" id="inventoryQty" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Izoh</label>
+                    <textarea class="form-input form-textarea" id="inventoryNote" placeholder="Izoh..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-block" onclick="saveInventory()">Saqlash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>💰 Qarz to'lash</h3>
+                <button class="modal-close" onclick="closeModal('paymentModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="paymentDebtorId">
+                <div style="background:#fff3cd;padding:15px;border-radius:8px;margin-bottom:15px;">
+                    <div style="font-size:13px;color:#856404;">Qarzdor:</div>
+                    <div style="font-weight:700;" id="paymentDebtorName"></div>
+                    <div style="font-size:14px;color:#856404;margin-top:5px;">Jami qarz: <strong id="paymentDebtorTotal"></strong></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">To'lov summasi (so'm)</label>
+                    <input type="number" class="form-input" id="paymentAmount" placeholder="Summa kiriting...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Izoh (ixtiyoriy)</label>
+                    <textarea class="form-input form-textarea" id="paymentNote" placeholder="Izoh..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success btn-block" onclick="processPayment()">To'lash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal" style="max-width:350px;">
+            <div class="modal-body" style="text-align:center;padding:30px;">
+                <div style="font-size:40px;margin-bottom:15px;" id="confirmIcon">⚠️</div>
+                <h3 id="confirmTitle" style="margin-bottom:10px;"></h3>
+                <p id="confirmText" style="color:var(--gray);margin-bottom:20px;"></p>
+                <div style="display:flex;gap:10px;">
+                    <button class="btn btn-danger" style="flex:1;" onclick="closeModal('confirmModal')">Bekor qilish</button>
+                    <button class="btn btn-primary" style="flex:1;" id="confirmBtn" onclick="">Tasdiqlash</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Bottom Navigation (Mobile) -->
+    <div class="bottom-nav" id="bottomNav">
+        <div class="bottom-nav-items" id="bottomNavItems"></div>
+    </div>
+
+    <script>
+        // Firebase Configuration - O'ZGARTIRING!
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Global State
+        let currentUser = null; // 'admin' or 'seller'
+        let products = {};
+        let sales = {};
+        let debtors = {};
+        let debts = {};
+        let inventory = {};
+        let settings = { adminPin: '1234', sellerPin: '5678' };
+        let cart = [];
+        let allProducts = {};
+        let pendingDebtData = null; // Holds debt info while creating login
+
+        // ==================== INITIALIZATION ====================
+        function init() {
+            // Listen to Firebase connection
+            const connRef = db.ref('.info/connected');
+            connRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    document.getElementById('loadingScreen').style.display = 'none';
+                    document.getElementById('loginScreen').style.display = 'flex';
+                }
+            });
+
+            // Load settings
+            db.ref('settings').on('value', (snap) => {
+                if (snap.val()) {
+                    settings = { ...settings, ...snap.val() };
+                    if (document.getElementById('adminPinSetting')) {
+                        document.getElementById('adminPinSetting').value = settings.adminPin || '1234';
+                        document.getElementById('sellerPinSetting').value = settings.sellerPin || '5678';
+                    }
+                }
+            });
+
+            // Load products
+            db.ref('products').on('value', (snap) => {
+                products = snap.val() || {};
+                allProducts = { ...products };
+                renderProducts();
+                renderSellingGrid();
+            });
+
+            // Load sales
+            db.ref('sales').on('value', (snap) => {
+                sales = snap.val() || {};
+                renderSales();
+                renderDashboard();
+            });
+
+            // Load debtors
+            db.ref('debtors').on('value', (snap) => {
+                debtors = snap.val() || {};
+                renderDebtors();
+            });
+
+            // Load debts
+            db.ref('debts').on('value', (snap) => {
+                debts = snap.val() || {};
+                renderDebtors();
+                renderDashboard();
+            });
+
+            // Load inventory
+            db.ref('inventory').on('value', (snap) => {
+                inventory = snap.val() || {};
+                renderInventory();
+            });
+
+            // Fallback: if Firebase takes too long, show login after 5 sec
+            setTimeout(() => {
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('loginScreen').style.display = 'flex';
+            }, 5000);
+
+            // Enter key for PIN
+            document.getElementById('pinInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') login();
+            });
+        }
+
+        // ==================== AUTH ====================
+        function selectRole(role) {
+            document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-role="${role}"]`).classList.add('active');
+        }
+
+        function getSelectedRole() {
+            const activeBtn = document.querySelector('.role-btn.active');
+            return activeBtn ? activeBtn.dataset.role : 'admin';
+        }
+
+        function login() {
+            const pin = document.getElementById('pinInput').value;
+            const role = getSelectedRole();
+            const errorEl = document.getElementById('loginError');
+
+            if (role === 'admin' && pin === (settings.adminPin || '1234')) {
+                currentUser = 'admin';
+                showApp();
+            } else if (role === 'seller' && pin === (settings.sellerPin || '5678')) {
+                currentUser = 'seller';
+                showApp();
+            } else {
+                errorEl.style.display = 'block';
+                document.getElementById('pinInput').value = '';
+                setTimeout(() => { errorEl.style.display = 'none'; }, 3000);
+            }
+        }
+
+        function showApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+            document.getElementById('userBadge').textContent = currentUser === 'admin' ? 'Admin' : 'Sotuvchi';
+
+            if (currentUser === 'admin') {
+                document.getElementById('adminNav').style.display = 'flex';
+                document.getElementById('sellerNav').style.display = 'none';
+                switchSection('dashboard');
+            } else {
+                document.getElementById('adminNav').style.display = 'none';
+                document.getElementById('sellerNav').style.display = 'flex';
+                switchSection('selling');
+            }
+            setupBottomNav();
+            renderDashboard();
+        }
+
+        function logout() {
+            currentUser = null;
+            cart = [];
+            updateCartBar();
+            document.getElementById('appContainer').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('pinInput').value = '';
+        }
+
+        // ==================== NAVIGATION ====================
+        function switchSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+            const section = document.getElementById('section-' + sectionId);
+            if (section) section.classList.add('active');
+
+            const tab = document.querySelector(`[data-section="${sectionId}"]`);
+            if (tab) tab.classList.add('active');
+
+            // Update bottom nav
+            document.querySelectorAll('.bottom-nav-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.section === sectionId);
+            });
+        }
+
+        function setupBottomNav() {
+            const container = document.getElementById('bottomNavItems');
+            let items = [];
+            if (currentUser === 'admin') {
+                items = [
+                    { id: 'dashboard', icon: '📊', label: 'Bosh sahifa' },
+                    { id: 'selling', icon: '🛒', label: 'Sotish' },
+                    { id: 'debts', icon: '💳', label: 'Qarzlar' },
+                    { id: 'products', icon: '📦', label: 'Mahsulotlar' },
+                    { id: 'settings', icon: '⚙️', label: 'Sozlamalar' }
+                ];
+            } else {
+                items = [
+                    { id: 'selling', icon: '🛒', label: 'Sotish' },
+                    { id: 'my-sales', icon: '📋', label: 'Savdolarim' }
+                ];
+            }
+            container.innerHTML = items.map(item => `
+                <div class="bottom-nav-item ${item.id === (currentUser === 'admin' ? 'dashboard' : 'selling') ? 'active' : ''}" data-section="${item.id}" onclick="switchSection('${item.id}')">
+                    <span style="font-size:20px;">${item.icon}</span>
+                    <span>${item.label}</span>
+                </div>
+            `).join('');
+        }
+
+        // ==================== DASHBOARD ====================
+        function renderDashboard() {
+            const today = new Date().toDateString();
+            let todaySales = 0;
+            let todayRevenue = 0;
+            let recentSalesArr = [];
+
+            Object.entries(sales).forEach(([id, sale]) => {
+                const saleDate = new Date(sale.createdAt).toDateString();
+                if (saleDate === today) {
+                    todaySales++;
+                    todayRevenue += sale.total || 0;
+                }
+                recentSalesArr.push({ id, ...sale });
+            });
+
+            recentSalesArr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+            document.getElementById('statTotalSales').textContent = todaySales;
+            document.getElementById('statTotalRevenue').textContent = formatMoney(todayRevenue);
+            document.getElementById('statProducts').textContent = Object.keys(products).length;
+
+            // Calculate open debts
+            let openDebts = 0;
+            Object.values(debts).forEach(d => {
+                if (d.status === 'active') openDebts += (d.remainingAmount || 0);
+            });
+            document.getElementById('statDebts').textContent = formatMoney(openDebts);
+
+            // Recent sales table
+            const tbody = document.getElementById('recentSalesTable');
+            tbody.innerHTML = recentSalesArr.slice(0, 10).map(sale => `
+                <tr>
+                    <td>${formatDate(sale.createdAt)}</td>
+                    <td>${formatMoney(sale.total)}</td>
+                    <td><span class="badge ${sale.paymentType === 'debt' ? 'badge-warning' : 'badge-success'}">${sale.paymentType === 'debt' ? 'Qarz' : 'Naqd'}</span></td>
+                    <td>${sale.seller || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ==================== PRODUCTS ====================
+        function renderProducts() {
+            const search = (document.getElementById('productSearch')?.value || '').toLowerCase();
+            const tbody = document.getElementById('productsTable');
+            if (!tbody) return;
+
+            let html = '';
+            Object.entries(products).forEach(([id, p]) => {
+                if (search && !p.name.toLowerCase().includes(search) && !(p.volume || '').toLowerCase().includes(search)) return;
+                html += `
+                    <tr>
+                        <td>${p.name}</td>
+                        <td>${p.volume || '-'}</td>
+                        <td>${formatMoney(p.price)}</td>
+                        <td>${p.stock || 0}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" onclick="editProduct('${id}')">✏️</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteProduct('${id}')">🗑</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html || '<tr><td colspan="5" style="text-align:center;color:var(--gray);">Mahsulotlar topilmadi</td></tr>';
+        }
+
+        function filterProducts() { renderProducts(); }
+
+        function openProductModal(id) {
+            document.getElementById('editProductId').value = id || '';
+            document.getElementById('productModalTitle').textContent = id ? 'Mahsulotni tahrirlash' : 'Mahsulot qo\'shish';
+            if (id && products[id]) {
+                document.getElementById('productName').value = products[id].name || '';
+                document.getElementById('productVolume').value = products[id].volume || '';
+                document.getElementById('productPrice').value = products[id].price || '';
+                document.getElementById('productStock').value = products[id].stock || '';
+            } else {
+                document.getElementById('productName').value = '';
+                document.getElementById('productVolume').value = '';
+                document.getElementById('productPrice').value = '';
+                document.getElementById('productStock').value = '';
+            }
+            openModal('productModal');
+        }
+
+        function editProduct(id) { openProductModal(id); }
+
+        function saveProduct() {
+            const id = document.getElementById('editProductId').value;
+            const name = document.getElementById('productName').value.trim();
+            const volume = document.getElementById('productVolume').value.trim();
+            const price = parseInt(document.getElementById('productPrice').value) || 0;
+            const stock = parseInt(document.getElementById('productStock').value) || 0;
+
+            if (!name) { showToast('Mahsulot nomini kiriting!', 'error'); return; }
+            if (price <= 0) { showToast('Narxni kiriting!', 'error'); return; }
+
+            const data = { name, volume, price, stock, updatedAt: Date.now() };
+            if (id) {
+                db.ref('products/' + id).update(data);
+                showToast('Mahsulot yangilandi!', 'success');
+            } else {
+                data.createdAt = Date.now();
+                db.ref('products').push(data);
+                showToast('Mahsulot qo\'shildi!', 'success');
+            }
+            closeModal('productModal');
+        }
+
+        function deleteProduct(id) {
+            showConfirm('O\'chirish', 'Bu mahsulotni o\'chirishni xohlaysizmi?', () => {
+                db.ref('products/' + id).remove();
+                showToast('Mahsulot o\'chirildi!', 'success');
+            });
+        }
+
+        // ==================== SELLING ====================
+        function renderSellingGrid() {
+            const search = (document.getElementById('sellingSearch')?.value || '').toLowerCase();
+            const grid = document.getElementById('sellingGrid');
+            if (!grid) return;
+
+            let html = '';
+            Object.entries(products).forEach(([id, p]) => {
+                if (search && !p.name.toLowerCase().includes(search) && !(p.volume || '').toLowerCase().includes(search)) return;
+                const stockClass = (p.stock || 0) <= 0 ? 'color:var(--danger)' : '';
+                html += `
+                    <div class="product-card" onclick="addToCart('${id}')">
+                        <div class="product-name">${p.name}</div>
+                        <div class="product-volume">${p.volume || ''}</div>
+                        <div class="product-price">${formatMoney(p.price)}</div>
+                        <div class="product-stock" style="${stockClass}">Omborda: ${p.stock || 0} ta</div>
+                    </div>
+                `;
+            });
+            grid.innerHTML = html || '<p style="text-align:center;color:var(--gray);grid-column:1/-1;">Mahsulotlar topilmadi</p>';
+        }
+
+        function filterSellingProducts() { renderSellingGrid(); }
+
+        // ==================== CART ====================
+        function addToCart(productId) {
+            const product = products[productId];
+            if (!product) return;
+
+            const existing = cart.find(item => item.productId === productId);
+            if (existing) {
+                existing.quantity++;
+            } else {
+                cart.push({
+                    productId,
+                    name: product.name,
+                    volume: product.volume || '',
+                    price: product.price,
+                    quantity: 1
+                });
+            }
+            updateCartBar();
+            showToast(`${product.name} savatga qo'shildi`, 'success');
+        }
+
+        function updateCartBar() {
+            const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            document.getElementById('cartCount').textContent = count;
+            document.getElementById('cartTotal').textContent = formatMoney(total);
+
+            const cartBar = document.getElementById('cartBar');
+            if (count > 0) {
+                cartBar.classList.add('visible');
+            } else {
+                cartBar.classList.remove('visible');
+            }
+        }
+
+        function openCartModal() {
+            renderCartItems();
+            openModal('cartModal');
+        }
+
+        function renderCartItems() {
+            const container = document.getElementById('cartItems');
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            if (cart.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:var(--gray);padding:20px;">Savat bo\'sh</p>';
+            } else {
+                container.innerHTML = cart.map((item, index) => `
+                    <div class="cart-item">
+                        <div class="cart-item-info">
+                            <div class="cart-item-name">${item.name}</div>
+                            <div class="cart-item-detail">${item.volume} - ${formatMoney(item.price)}</div>
+                        </div>
+                        <div class="cart-item-actions">
+                            <button class="qty-btn" onclick="changeQty(${index}, -1)">-</button>
+                            <span class="cart-item-qty">${item.quantity}</span>
+                            <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
+                        </div>
+                        <div class="cart-item-price">${formatMoney(item.price * item.quantity)}</div>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('cartModalTotal').textContent = formatMoney(total);
+        }
+
+        function changeQty(index, delta) {
+            cart[index].quantity += delta;
+            if (cart[index].quantity <= 0) {
+                cart.splice(index, 1);
+            }
+            updateCartBar();
+            renderCartItems();
+            if (cart.length === 0) closeModal('cartModal');
+        }
+
+        function clearCart() {
+            cart = [];
+            updateCartBar();
+            closeModal('cartModal');
+            showToast('Savat tozalandi', 'info');
+        }
+
+        // ==================== SALES ====================
+        function completeSale(paymentType, debtorId) {
+            if (cart.length === 0) { showToast('Savat bo\'sh!', 'error'); return; }
+
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const saleData = {
+                items: cart.map(item => ({
+                    productId: item.productId,
+                    name: item.name,
+                    volume: item.volume,
+                    price: item.price,
+                    quantity: item.quantity
+                })),
+                total,
+                paymentType,
+                seller: currentUser === 'admin' ? 'Admin' : 'Sotuvchi',
+                createdAt: Date.now()
+            };
+
+            if (debtorId) saleData.debtorId = debtorId;
+
+            // Save sale
+            const saleRef = db.ref('sales').push(saleData);
+
+            // Update product stock
+            cart.forEach(item => {
+                const currentStock = (products[item.productId]?.stock || 0) - item.quantity;
+                db.ref('products/' + item.productId + '/stock').set(Math.max(0, currentStock));
+            });
+
+            // Clear cart
+            cart = [];
+            updateCartBar();
+            closeModal('cartModal');
+
+            return saleRef.key;
+        }
+
+        function renderSales() {
+            const tbody = document.getElementById('salesTable');
+            if (!tbody) return;
+
+            let salesArr = Object.entries(sales).map(([id, s]) => ({ id, ...s }));
+            salesArr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+            tbody.innerHTML = salesArr.map(sale => {
+                const items = (sale.items || []).map(i => `${i.name} x${i.quantity}`).join(', ');
+                return `
+                    <tr>
+                        <td>${formatDate(sale.createdAt)}</td>
+                        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${items}</td>
+                        <td>${formatMoney(sale.total)}</td>
+                        <td><span class="badge ${sale.paymentType === 'debt' ? 'badge-warning' : 'badge-success'}">${sale.paymentType === 'debt' ? 'Qarz' : 'Naqd'}</span></td>
+                        <td>${sale.seller || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // My sales
+            const myTbody = document.getElementById('mySalesTable');
+            if (myTbody) {
+                const mySales = salesArr.filter(s => s.seller === 'Sotuvchi');
+                myTbody.innerHTML = mySales.map(sale => {
+                    const items = (sale.items || []).map(i => `${i.name} x${i.quantity}`).join(', ');
+                    return `
+                        <tr>
+                            <td>${formatDate(sale.createdAt)}</td>
+                            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${items}</td>
+                            <td>${formatMoney(sale.total)}</td>
+                            <td><span class="badge ${sale.paymentType === 'debt' ? 'badge-warning' : 'badge-success'}">${sale.paymentType === 'debt' ? 'Qarz' : 'Naqd'}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        // ==================== DEBT SYSTEM ====================
+        function openDebtModal() {
+            if (cart.length === 0) { showToast('Savat bo\'sh!', 'error'); return; }
+
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('debtAmount').textContent = formatMoney(total);
+            document.getElementById('debtType').value = 'organization';
+            document.getElementById('debtOrgName').value = '';
+            document.getElementById('debtPersonName').value = '';
+            document.getElementById('debtPhone').value = '';
+            document.getElementById('debtNote').value = '';
+            document.getElementById('orgNameGroup').style.display = 'block';
+
+            closeModal('cartModal');
+            openModal('debtModal');
+        }
+
+        function onDebtTypeChange() {
+            const type = document.getElementById('debtType').value;
+            const orgGroup = document.getElementById('orgNameGroup');
+            if (type === 'individual') {
+                orgGroup.style.display = 'none';
+                document.getElementById('debtOrgName').value = '';
+            } else {
+                orgGroup.style.display = 'block';
+            }
+        }
+
+        // Autocomplete for organization name
+        function onOrgNameInput() {
+            const input = document.getElementById('debtOrgName').value.toLowerCase().trim();
+            const list = document.getElementById('orgAutocomplete');
+
+            const orgNames = new Set();
+            Object.values(debtors).forEach(d => {
+                if (d.type === 'organization' && d.organizationName) {
+                    orgNames.add(d.organizationName);
+                }
+            });
+
+            const filtered = [...orgNames].filter(name => name.toLowerCase().includes(input));
+
+            if (filtered.length > 0 && input.length > 0) {
+                list.innerHTML = filtered.map(name => `
+                    <div class="autocomplete-item" onclick="selectOrg('${escapeHtml(name)}')">${escapeHtml(name)}</div>
+                `).join('');
+                list.classList.add('visible');
+            } else {
+                list.classList.remove('visible');
+            }
+        }
+
+        function selectOrg(name) {
+            document.getElementById('debtOrgName').value = name;
+            document.getElementById('orgAutocomplete').classList.remove('visible');
+            // Auto-fill person names for this org
+            onPersonNameInput();
+        }
+
+        // Autocomplete for person name
+        function onPersonNameInput() {
+            const personInput = document.getElementById('debtPersonName').value.toLowerCase().trim();
+            const orgName = document.getElementById('debtOrgName').value.trim();
+            const type = document.getElementById('debtType').value;
+            const list = document.getElementById('personAutocomplete');
+
+            const personNames = new Set();
+            Object.values(debtors).forEach(d => {
+                if (type === 'organization') {
+                    if (d.type === 'organization' && d.organizationName === orgName && d.personName) {
+                        personNames.add(d.personName);
+                    }
+                } else {
+                    if (d.type === 'individual' && d.personName) {
+                        personNames.add(d.personName);
+                    }
+                }
+            });
+
+            const filtered = [...personNames].filter(name => name.toLowerCase().includes(personInput));
+
+            if (filtered.length > 0 && personInput.length > 0) {
+                list.innerHTML = filtered.map(name => `
+                    <div class="autocomplete-item" onclick="selectPerson('${escapeHtml(name)}')">${escapeHtml(name)}</div>
+                `).join('');
+                list.classList.add('visible');
+            } else {
+                list.classList.remove('visible');
+            }
+        }
+
+        function selectPerson(name) {
+            document.getElementById('debtPersonName').value = name;
+            document.getElementById('personAutocomplete').classList.remove('visible');
+        }
+
+        // Hide autocomplete on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.autocomplete-container')) {
+                document.querySelectorAll('.autocomplete-list').forEach(list => list.classList.remove('visible'));
+            }
+        });
+
+        function findExistingDebtor(type, orgName, personName) {
+            for (const [id, d] of Object.entries(debtors)) {
+                if (type === 'organization') {
+                    if (d.type === 'organization' && d.organizationName === orgName) {
+                        return { id, ...d };
+                    }
+                } else {
+                    if (d.type === 'individual' && d.personName === personName) {
+                        return { id, ...d };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function confirmDebtSale() {
+            const type = document.getElementById('debtType').value;
+            const orgName = document.getElementById('debtOrgName').value.trim();
+            const personName = document.getElementById('debtPersonName').value.trim();
+            const phone = document.getElementById('debtPhone').value.trim();
+            const note = document.getElementById('debtNote').value.trim();
+
+            if (type === 'organization' && !orgName) {
+                showToast('Tashkilot nomini kiriting!', 'error'); return;
+            }
+            if (!personName) {
+                showToast('Xaridor ismini kiriting!', 'error'); return;
+            }
+
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            // Check if debtor already exists
+            const existingDebtor = findExistingDebtor(type, orgName, personName);
+
+            if (existingDebtor) {
+                // Existing debtor - capture cart items before completeSale clears the cart
+                const cartItems = [...cart];
+                const saleId = completeSale('debt', existingDebtor.id);
+                saveDebt(existingDebtor.id, saleId, total, note, personName, cartItems);
+                closeModal('debtModal');
+                showToast('Qarz saqlandi!', 'success');
+            } else {
+                // New debtor - need to create login/password
+                pendingDebtData = { type, orgName, personName, phone, note, total, cartItems: [...cart] };
+                closeModal('debtModal');
+                document.getElementById('newDebtorLogin').value = '';
+                document.getElementById('newDebtorPassword').value = '';
+                openModal('loginCreateModal');
+            }
+        }
+
+        function generatePassword() {
+            const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            let password = '';
+            for (let i = 0; i < 8; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('newDebtorPassword').value = password;
+        }
+
+        function saveDebtorLogin() {
+            if (!pendingDebtData) { showToast('Xatolik yuz berdi!', 'error'); return; }
+
+            const login = document.getElementById('newDebtorLogin').value.trim();
+            const password = document.getElementById('newDebtorPassword').value.trim();
+
+            if (!login) { showToast('Login kiriting!', 'error'); return; }
+            if (!password) { showToast('Parol kiriting!', 'error'); return; }
+
+            // Check login uniqueness
+            const loginExists = Object.values(debtors).some(d => d.login === login);
+            if (loginExists) { showToast('Bu login allaqachon mavjud!', 'error'); return; }
+
+            const { type, orgName, personName, phone, note, total, cartItems } = pendingDebtData;
+
+            // Create debtor record
+            const debtorData = {
+                type,
+                organizationName: orgName || '',
+                personName,
+                login,
+                password,
+                phone: phone || '',
+                createdAt: Date.now(),
+                createdBy: currentUser === 'admin' ? 'Admin' : 'Sotuvchi'
+            };
+
+            const debtorRef = db.ref('debtors').push(debtorData);
+            const debtorId = debtorRef.key;
+
+            // Complete the sale (cartItems already saved in pendingDebtData before cart is cleared)
+            const saleId = completeSale('debt', debtorId);
+
+            // Save debt record using cartItems from pendingDebtData
+            saveDebt(debtorId, saleId, total, note, personName, cartItems);
+
+            closeModal('loginCreateModal');
+            pendingDebtData = null;
+            showToast('Qarzdor yaratildi va qarz saqlandi!', 'success');
+        }
+
+        function saveDebt(debtorId, saleId, amount, note, personName, cartItems) {
+            const items = (cartItems || []).map(item => ({
+                productId: item.productId,
+                name: item.name,
+                volume: item.volume,
+                price: item.price,
+                quantity: item.quantity
+            }));
+            const debtData = {
+                debtorId,
+                saleId: saleId || '',
+                amount,
+                paidAmount: 0,
+                remainingAmount: amount,
+                status: 'active',
+                items,
+                note: note || '',
+                personName: personName || '',
+                seller: currentUser === 'admin' ? 'Admin' : 'Sotuvchi',
+                createdAt: Date.now()
+            };
+            db.ref('debts').push(debtData);
+        }
+
+        // ==================== DEBTORS LIST & PAYMENT ====================
+        function renderDebtors() {
+            const search = (document.getElementById('debtSearch')?.value || '').toLowerCase();
+            const container = document.getElementById('debtorsList');
+            if (!container) return;
+
+            // Group debts by debtor
+            const debtorDebts = {};
+            let totalDebt = 0;
+            let paidDebt = 0;
+
+            Object.entries(debts).forEach(([id, d]) => {
+                if (!debtorDebts[d.debtorId]) debtorDebts[d.debtorId] = [];
+                debtorDebts[d.debtorId].push({ id, ...d });
+                totalDebt += (d.remainingAmount || 0);
+                paidDebt += (d.paidAmount || 0);
+            });
+
+            // Update stats
+            const statDebtors = document.getElementById('statDebtors');
+            const statTotalDebt = document.getElementById('statTotalDebt');
+            const statPaidDebt = document.getElementById('statPaidDebt');
+            if (statDebtors) statDebtors.textContent = Object.keys(debtors).length;
+            if (statTotalDebt) statTotalDebt.textContent = formatMoney(totalDebt);
+            if (statPaidDebt) statPaidDebt.textContent = formatMoney(paidDebt);
+
+            let html = '';
+            Object.entries(debtors).forEach(([id, debtor]) => {
+                const name = debtor.type === 'organization'
+                    ? `${debtor.organizationName} (${debtor.personName})`
+                    : debtor.personName;
+
+                if (search && !name.toLowerCase().includes(search)) return;
+
+                const debtsList = debtorDebts[id] || [];
+                const totalRemaining = debtsList.reduce((sum, d) => sum + (d.remainingAmount || 0), 0);
+                const totalPaid = debtsList.reduce((sum, d) => sum + (d.paidAmount || 0), 0);
+                const totalAmount = debtsList.reduce((sum, d) => sum + (d.amount || 0), 0);
+                const progress = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
+
+                if (totalRemaining <= 0 && debtsList.length > 0) {
+                    // All paid - show differently with delete option
+                    html += `
+                        <div class="debtor-card" style="border-left-color:var(--success);opacity:0.7;">
+                            <div class="debtor-header">
+                                <div>
+                                    <div class="debtor-name">${escapeHtml(name)}</div>
+                                    <div class="debtor-type">${debtor.type === 'organization' ? 'Tashkilot' : 'Shaxs'} | Login: ${debtor.login || '-'}</div>
+                                </div>
+                                <span class="badge badge-success">To'langan</span>
+                            </div>
+                            <div class="progress"><div class="progress-bar" style="width:100%"></div></div>
+                            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+                                <button class="btn btn-danger btn-sm" onclick="clearDebtorDebts('${id}')">🗑️ Qarzlarni o'chirish</button>
+                            </div>
+                        </div>
+                    `;
+                } else if (debtsList.length > 0) {
+                    html += `
+                        <div class="debtor-card">
+                            <div class="debtor-header">
+                                <div>
+                                    <div class="debtor-name">${escapeHtml(name)}</div>
+                                    <div class="debtor-type">${debtor.type === 'organization' ? 'Tashkilot' : 'Shaxs'} | Login: ${debtor.login || '-'} | Tel: ${debtor.phone || '-'}</div>
+                                </div>
+                                <div class="debtor-amount">${formatMoney(totalRemaining)}</div>
+                            </div>
+                            <div class="debtor-details">Jami: ${formatMoney(totalAmount)} | To'langan: ${formatMoney(totalPaid)} | Qarzlar soni: ${debtsList.length}</div>
+                            <div class="progress" style="margin-bottom:10px;"><div class="progress-bar" style="width:${progress}%"></div></div>
+                            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                                <button class="btn btn-success btn-sm" onclick="openPaymentModal('${id}')">💰 To'lash</button>
+                                <button class="btn btn-info btn-sm" onclick="showDebtorDebts('${id}')">📋 Batafsil</button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="debtor-card" style="opacity:0.5;">
+                            <div class="debtor-header">
+                                <div>
+                                    <div class="debtor-name">${escapeHtml(name)}</div>
+                                    <div class="debtor-type">${debtor.type === 'organization' ? 'Tashkilot' : 'Shaxs'} | Login: ${debtor.login || '-'}</div>
+                                </div>
+                                <span class="badge badge-info">Qarzsiz</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            container.innerHTML = html || '<p style="text-align:center;color:var(--gray);padding:20px;">Qarzdorlar topilmadi</p>';
+        }
+
+        function filterDebtors() { renderDebtors(); }
+
+        function showDebtorDebts(debtorId) {
+            const debtor = debtors[debtorId];
+            if (!debtor) return;
+
+            const debtorDebtsList = Object.entries(debts)
+                .filter(([id, d]) => d.debtorId === debtorId)
+                .map(([id, d]) => ({ id, ...d }))
+                .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+            let details = '<div style="max-height:300px;overflow-y:auto;">';
+            debtorDebtsList.forEach((d, i) => {
+                const items = (d.items || []).map(item => `${item.name} x${item.quantity}`).join(', ');
+                const statusBadge = d.status === 'paid'
+                    ? '<span class="badge badge-success">To\'langan</span>'
+                    : '<span class="badge badge-danger">Ochiq</span>';
+                details += `
+                    <div style="padding:10px;border-bottom:1px solid #f0f0f0;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <strong>#${i + 1} - ${formatDate(d.createdAt)}</strong>
+                            ${statusBadge}
+                        </div>
+                        <div style="font-size:12px;color:var(--gray);margin-top:5px;">${items}</div>
+                        <div style="margin-top:5px;">Summa: ${formatMoney(d.amount)} | To'langan: ${formatMoney(d.paidAmount)} | Qoldi: ${formatMoney(d.remainingAmount)}</div>
+                        ${d.personName ? '<div style="font-size:12px;color:var(--gray);">Xaridor: ' + escapeHtml(d.personName) + '</div>' : ''}
+                    </div>
+                `;
+            });
+            details += '</div>';
+
+            const name = debtor.type === 'organization'
+                ? `${debtor.organizationName}`
+                : debtor.personName;
+
+            // Show in confirm modal as info
+            document.getElementById('confirmIcon').textContent = '📋';
+            document.getElementById('confirmTitle').textContent = name + ' - Qarzlar';
+            document.getElementById('confirmText').innerHTML = details;
+            document.getElementById('confirmBtn').style.display = 'none';
+            document.querySelector('#confirmModal .btn-danger').textContent = 'Yopish';
+            openModal('confirmModal');
+        }
+
+        // ==================== PAYMENT ====================
+        function openPaymentModal(debtorId) {
+            const debtor = debtors[debtorId];
+            if (!debtor) return;
+
+            const debtorDebtsList = Object.values(debts).filter(d => d.debtorId === debtorId && d.status === 'active');
+            const totalRemaining = debtorDebtsList.reduce((sum, d) => sum + (d.remainingAmount || 0), 0);
+
+            const name = debtor.type === 'organization'
+                ? `${debtor.organizationName} (${debtor.personName})`
+                : debtor.personName;
+
+            document.getElementById('paymentDebtorId').value = debtorId;
+            document.getElementById('paymentDebtorName').textContent = name;
+            document.getElementById('paymentDebtorTotal').textContent = formatMoney(totalRemaining);
+            document.getElementById('paymentAmount').value = '';
+            document.getElementById('paymentNote').value = '';
+
+            openModal('paymentModal');
+        }
+
+        function processPayment() {
+            const debtorId = document.getElementById('paymentDebtorId').value;
+            let amount = parseInt(document.getElementById('paymentAmount').value) || 0;
+            const note = document.getElementById('paymentNote').value.trim();
+
+            if (amount <= 0) { showToast('To\'lov summasini kiriting!', 'error'); return; }
+
+            // Get active debts for this debtor, sorted by date (oldest first - FIFO)
+            const activeDebts = Object.entries(debts)
+                .filter(([id, d]) => d.debtorId === debtorId && d.status === 'active')
+                .map(([id, d]) => ({ id, ...d }))
+                .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+            if (activeDebts.length === 0) {
+                showToast('Bu qarzdorning ochiq qarzi yo\'q!', 'error');
+                return;
+            }
+
+            // Validate: payment should not exceed total remaining debt
+            const totalRemainingDebt = activeDebts.reduce((sum, d) => sum + (d.remainingAmount || 0), 0);
+            if (amount > totalRemainingDebt) {
+                showToast(`To'lov summasi qarz qoldig'idan oshib ketdi! Maksimal: ${formatMoney(totalRemainingDebt)}`, 'error');
+                return;
+            }
+
+            let remainingPayment = amount;
+
+            // Distribute payment FIFO
+            const updates = {};
+            activeDebts.forEach(debt => {
+                if (remainingPayment <= 0) return;
+
+                const canPay = Math.min(remainingPayment, debt.remainingAmount);
+                const newPaid = (debt.paidAmount || 0) + canPay;
+                const newRemaining = debt.remainingAmount - canPay;
+                const newStatus = newRemaining <= 0 ? 'paid' : 'active';
+
+                updates[`debts/${debt.id}/paidAmount`] = newPaid;
+                updates[`debts/${debt.id}/remainingAmount`] = Math.max(0, newRemaining);
+                updates[`debts/${debt.id}/status`] = newStatus;
+                updates[`debts/${debt.id}/lastPayment`] = {
+                    amount: canPay,
+                    date: Date.now(),
+                    note: note || '',
+                    receivedBy: currentUser === 'admin' ? 'Admin' : 'Sotuvchi'
+                };
+
+                remainingPayment -= canPay;
+            });
+
+            db.ref().update(updates).then(() => {
+                closeModal('paymentModal');
+                showToast(`${formatMoney(amount)} to'lov qabul qilindi!`, 'success');
+            }).catch(err => {
+                showToast('Xatolik: ' + err.message, 'error');
+            });
+        }
+
+        function clearDebtorDebts(debtorId) {
+            if (!confirm("Bu qarzdorning barcha to'langan qarzlarini o'chirishni xohlaysizmi?")) return;
+
+            const paidDebts = Object.entries(debts)
+                .filter(([id, d]) => d.debtorId === debtorId && d.status === 'paid');
+
+            const updates = {};
+            paidDebts.forEach(([id, d]) => {
+                updates['debts/' + id] = null;
+            });
+
+            if (Object.keys(updates).length > 0) {
+                db.ref().update(updates).then(() => {
+                    showToast("To'langan qarzlar o'chirildi!", 'success');
+                }).catch(err => {
+                    showToast('Xatolik: ' + err.message, 'error');
+                });
+            } else {
+                showToast("O'chirish uchun to'langan qarz topilmadi!", 'error');
+            }
+        }
+
+        // ==================== INVENTORY ====================
+        function openInventoryModal(type) {
+            document.getElementById('inventoryType').value = type;
+            document.getElementById('inventoryModalTitle').textContent = type === 'in' ? '📥 Kirim' : '📤 Chiqim';
+            document.getElementById('inventoryQty').value = '';
+            document.getElementById('inventoryNote').value = '';
+
+            // Fill product selector
+            const select = document.getElementById('inventoryProduct');
+            select.innerHTML = '<option value="">-- Tanlang --</option>' +
+                Object.entries(products).map(([id, p]) => `<option value="${id}">${p.name} (${p.volume || '-'})</option>`).join('');
+
+            openModal('inventoryModal');
+        }
+
+        function saveInventory() {
+            const type = document.getElementById('inventoryType').value;
+            const productId = document.getElementById('inventoryProduct').value;
+            const qty = parseInt(document.getElementById('inventoryQty').value) || 0;
+            const note = document.getElementById('inventoryNote').value.trim();
+
+            if (!productId) { showToast('Mahsulotni tanlang!', 'error'); return; }
+            if (qty <= 0) { showToast('Sonni kiriting!', 'error'); return; }
+
+            const product = products[productId];
+            if (!product) { showToast('Mahsulot topilmadi!', 'error'); return; }
+
+            // Save inventory record
+            db.ref('inventory').push({
+                productId,
+                productName: product.name,
+                type,
+                quantity: qty,
+                note,
+                createdAt: Date.now(),
+                createdBy: currentUser === 'admin' ? 'Admin' : 'Sotuvchi'
+            });
+
+            // Update product stock
+            const currentStock = product.stock || 0;
+            const newStock = type === 'in' ? currentStock + qty : Math.max(0, currentStock - qty);
+            db.ref('products/' + productId + '/stock').set(newStock);
+
+            closeModal('inventoryModal');
+            showToast(`${type === 'in' ? 'Kirim' : 'Chiqim'} saqlandi!`, 'success');
+        }
+
+        function renderInventory() {
+            const tbody = document.getElementById('inventoryTable');
+            if (!tbody) return;
+
+            let invArr = Object.entries(inventory).map(([id, inv]) => ({ id, ...inv }));
+            invArr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+            tbody.innerHTML = invArr.map(inv => `
+                <tr>
+                    <td>${formatDate(inv.createdAt)}</td>
+                    <td>${inv.productName || '-'}</td>
+                    <td><span class="badge ${inv.type === 'in' ? 'badge-success' : 'badge-danger'}">${inv.type === 'in' ? 'Kirim' : 'Chiqim'}</span></td>
+                    <td>${inv.quantity}</td>
+                    <td>${inv.note || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ==================== SETTINGS ====================
+        function saveSettings() {
+            const adminPin = document.getElementById('adminPinSetting').value.trim();
+            const sellerPin = document.getElementById('sellerPinSetting').value.trim();
+
+            if (adminPin.length !== 4 || sellerPin.length !== 4) {
+                showToast('PIN kod 4 ta raqamdan iborat bo\'lishi kerak!', 'error');
+                return;
+            }
+
+            db.ref('settings').update({ adminPin, sellerPin }).then(() => {
+                showToast('Sozlamalar saqlandi!', 'success');
+            });
+        }
+
+        // ==================== UTILITIES ====================
+        function formatMoney(amount) {
+            return (amount || 0).toLocaleString('uz-UZ') + ' so\'m';
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return '-';
+            const date = new Date(timestamp);
+            return date.toLocaleDateString('uz-UZ') + ' ' + date.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            // Reset confirm modal
+            if (id === 'confirmModal') {
+                document.getElementById('confirmBtn').style.display = 'inline-flex';
+                document.querySelector('#confirmModal .btn-danger').textContent = 'Bekor qilish';
+            }
+        }
+
+        function showConfirm(title, text, onConfirm) {
+            document.getElementById('confirmIcon').textContent = '⚠️';
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmText').textContent = text;
+            document.getElementById('confirmBtn').onclick = () => {
+                closeModal('confirmModal');
+                if (onConfirm) onConfirm();
+            };
+            document.getElementById('confirmBtn').style.display = 'inline-flex';
+            openModal('confirmModal');
+        }
+
+        function showToast(message, type) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 3000);
+        }
+
+        // ==================== INIT ====================
+        init();
+    </script>
+</body>
+</html>

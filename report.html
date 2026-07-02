@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hisobotlar - Market</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #3f37c9;
+            --success: #06d6a0;
+            --danger: #ef476f;
+            --warning: #ffd166;
+            --info: #118ab2;
+            --dark: #073b4c;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --white: #ffffff;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+            --radius: 12px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            color: var(--dark);
+            min-height: 100vh;
+        }
+        .loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; color: white;
+        }
+        .loading-screen .spinner {
+            width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .login-screen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            align-items: center; justify-content: center; z-index: 9998;
+        }
+        .login-card {
+            background: white; border-radius: var(--radius); padding: 40px;
+            width: 90%; max-width: 400px; box-shadow: var(--shadow); text-align: center;
+        }
+        .login-card h2 { margin-bottom: 10px; color: var(--dark); }
+        .login-card p { color: var(--gray); margin-bottom: 25px; }
+        .pin-input {
+            width: 100%; padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px;
+            font-size: 24px; text-align: center; letter-spacing: 10px;
+            outline: none; transition: border-color 0.3s;
+        }
+        .pin-input:focus { border-color: var(--primary); }
+        .login-btn {
+            width: 100%; padding: 15px; background: var(--primary); color: white;
+            border: none; border-radius: 8px; font-size: 16px; font-weight: 600;
+            cursor: pointer; margin-top: 15px; transition: background 0.3s;
+        }
+        .login-btn:hover { background: var(--primary-dark); }
+        .login-error { color: var(--danger); margin-top: 10px; font-size: 14px; display: none; }
+        .app-container { display: none; padding-bottom: 70px; }
+        .header {
+            background: white; padding: 15px 20px; box-shadow: var(--shadow);
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .header h1 { font-size: 20px; color: var(--primary); }
+        .header .user-info { display: flex; align-items: center; gap: 10px; }
+        .header .user-badge {
+            background: #eef1ff; color: var(--primary); padding: 5px 12px;
+            border-radius: 20px; font-size: 12px; font-weight: 600;
+        }
+        .logout-btn {
+            background: none; border: none; color: var(--danger);
+            cursor: pointer; font-size: 20px; padding: 5px;
+        }
+        .nav-tabs {
+            display: flex; background: white; padding: 0 10px;
+            overflow-x: auto; border-bottom: 1px solid #e0e0e0;
+        }
+        .nav-tab {
+            padding: 12px 20px; border: none; background: none;
+            font-size: 14px; font-weight: 500; color: var(--gray);
+            cursor: pointer; border-bottom: 3px solid transparent;
+            white-space: nowrap; transition: all 0.3s;
+        }
+        .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .content { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .card {
+            background: white; border-radius: var(--radius); padding: 20px;
+            box-shadow: var(--shadow); margin-bottom: 15px;
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .card-title { font-size: 18px; font-weight: 600; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card {
+            background: white; border-radius: var(--radius); padding: 20px;
+            box-shadow: var(--shadow); text-align: center;
+        }
+        .stat-value { font-size: 28px; font-weight: 700; color: var(--primary); }
+        .stat-label { font-size: 13px; color: var(--gray); margin-top: 5px; }
+        .btn {
+            padding: 10px 20px; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all 0.3s; display: inline-flex; align-items: center; gap: 5px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: var(--dark); }
+        .btn-info { background: var(--info); color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-block { width: 100%; justify-content: center; }
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: var(--dark); }
+        .form-input, .form-select {
+            width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;
+            font-size: 14px; outline: none; transition: border-color 0.3s;
+        }
+        .form-input:focus, .form-select:focus { border-color: var(--primary); }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e0e0e0; font-size: 14px; }
+        th { background: #f8f9fa; font-weight: 600; color: var(--dark); }
+        tr:hover { background: #f8f9fa; }
+        .badge {
+            display: inline-block; padding: 3px 8px; border-radius: 12px;
+            font-size: 11px; font-weight: 600;
+        }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+        .filter-row { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center; }
+        .filter-btn {
+            padding: 8px 16px; border: 2px solid #e0e0e0; border-radius: 20px;
+            background: white; font-size: 13px; cursor: pointer; font-weight: 500;
+            transition: all 0.3s;
+        }
+        .filter-btn.active { border-color: var(--primary); background: #eef1ff; color: var(--primary); }
+        .search-box { position: relative; margin-bottom: 15px; }
+        .search-input {
+            width: 100%; padding: 12px 15px 12px 40px; border: 2px solid #e0e0e0;
+            border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.3s;
+        }
+        .search-input:focus { border-color: var(--primary); }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--gray); }
+        .progress { background: #e9ecef; border-radius: 10px; height: 8px; overflow: hidden; }
+        .progress-bar { height: 100%; background: var(--success); border-radius: 10px; transition: width 0.3s; }
+        .debtor-card {
+            background: white; border-radius: var(--radius); padding: 20px;
+            box-shadow: var(--shadow); margin-bottom: 15px;
+            border-left: 4px solid var(--primary);
+        }
+        .debtor-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .debtor-name { font-weight: 700; font-size: 16px; }
+        .debtor-type { font-size: 12px; color: var(--gray); }
+        .debtor-amount { font-size: 20px; font-weight: 700; color: var(--danger); }
+        .debtor-details { font-size: 13px; color: var(--gray); margin: 8px 0; }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: none; align-items: center;
+            justify-content: center; z-index: 1000; padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white; border-radius: var(--radius); width: 100%;
+            max-width: 500px; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            padding: 20px; border-bottom: 1px solid #e0e0e0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-header h3 { font-size: 18px; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray); }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 15px 20px; border-top: 1px solid #e0e0e0; display: flex; gap: 10px; justify-content: flex-end; }
+        .debt-detail-row {
+            padding: 12px; border-bottom: 1px solid #f0f0f0;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 5px;
+        }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast {
+            background: white; border-radius: 8px; padding: 15px 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15); margin-bottom: 10px;
+            display: flex; align-items: center; gap: 10px; min-width: 280px;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast-success { border-left: 4px solid var(--success); }
+        .toast-error { border-left: 4px solid var(--danger); }
+        .toast-info { border-left: 4px solid var(--info); }
+        .bottom-nav {
+            display: none; position: fixed; bottom: 0; left: 0; width: 100%;
+            background: white; border-top: 1px solid #e0e0e0; z-index: 150;
+            padding: 8px 0;
+        }
+        .bottom-nav-items { display: flex; justify-content: space-around; }
+        .bottom-nav-item {
+            display: flex; flex-direction: column; align-items: center;
+            font-size: 10px; color: var(--gray); cursor: pointer; padding: 5px;
+        }
+        .bottom-nav-item.active { color: var(--primary); }
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .nav-tabs { display: none; }
+            .bottom-nav { display: block; }
+            .content { padding: 15px; }
+            .app-container { padding-bottom: 80px; }
+            .filter-row { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <p>Firebase bilan ulanmoqda...</p>
+    </div>
+    <div class="login-screen" id="loginScreen">
+        <div class="login-card">
+            <h2>📊 Hisobotlar</h2>
+            <p>Admin PIN kodini kiriting</p>
+            <input type="password" class="pin-input" id="pinInput" maxlength="4" placeholder="****" inputmode="numeric">
+            <button class="login-btn" onclick="login()">Kirish</button>
+            <p class="login-error" id="loginError">PIN kod noto'g'ri!</p>
+        </div>
+    </div>
+    <div class="app-container" id="appContainer">
+        <div class="header">
+            <h1>📊 Hisobotlar</h1>
+            <div class="user-info">
+                <span class="user-badge">Admin</span>
+                <button class="logout-btn" onclick="logout()" title="Chiqish">&#x2B05;</button>
+            </div>
+        </div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-section="hisobot" onclick="switchSection('hisobot')">📋 Hisobot</button>
+            <button class="nav-tab" data-section="zaxira" onclick="switchSection('zaxira')">📦 Zaxira</button>
+            <button class="nav-tab" data-section="qarzlar" onclick="switchSection('qarzlar')">&#x1F4B3; Qarzlar</button>
+            <button class="nav-tab" data-section="admin" onclick="switchSection('admin')">&#x2699;&#xFE0F; Admin</button>
+        </div>
+        <div class="content">
+            <!-- Hisobot Section -->
+            <div class="section active" id="section-hisobot">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Savdo hisoboti</span>
+                        <button class="btn btn-success btn-sm" onclick="exportSalesCSV()">&#x1F4E5; CSV</button>
+                    </div>
+                    <div class="filter-row" id="salesDateFilter">
+                        <button class="filter-btn active" data-period="today" onclick="setSalesPeriod('today')">Bugun</button>
+                        <button class="filter-btn" data-period="yesterday" onclick="setSalesPeriod('yesterday')">Kecha</button>
+                        <button class="filter-btn" data-period="week" onclick="setSalesPeriod('week')">Hafta</button>
+                        <button class="filter-btn" data-period="month" onclick="setSalesPeriod('month')">Oy</button>
+                        <button class="filter-btn" data-period="all" onclick="setSalesPeriod('all')">Barchasi</button>
+                        <button class="filter-btn" data-period="custom" onclick="setSalesPeriod('custom')">Tanlash</button>
+                    </div>
+                    <div id="customDateRange" style="display:none;margin-bottom:15px;">
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                            <input type="date" class="form-input" id="salesDateFrom" style="width:auto;">
+                            <input type="date" class="form-input" id="salesDateTo" style="width:auto;">
+                            <button class="btn btn-primary btn-sm" onclick="renderSalesReport()">Ko'rsatish</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Mahsulot</th><th>Hajmi</th><th>Sotilgan soni</th><th>Sotuv soni</th><th>Jami summa</th></tr></thead>
+                            <tbody id="salesReportTable"></tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top:15px;padding-top:15px;border-top:2px solid #e0e0e0;">
+                        <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;">
+                            <span>Umumiy:</span>
+                            <span id="salesReportTotal">0 so'm</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Zaxira Section -->
+            <div class="section" id="section-zaxira">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Zaxira hisoboti</span>
+                        <button class="btn btn-success btn-sm" onclick="exportStockCSV()">&#x1F4E5; CSV</button>
+                    </div>
+                    <div class="filter-row" id="stockFilter">
+                        <button class="filter-btn active" data-stock="all" onclick="setStockFilter('all')">Barchasi</button>
+                        <button class="filter-btn" data-stock="low" onclick="setStockFilter('low')">Kam</button>
+                        <button class="filter-btn" data-stock="empty" onclick="setStockFilter('empty')">Bo'sh</button>
+                        <button class="filter-btn" data-stock="sufficient" onclick="setStockFilter('sufficient')">Yetarli</button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Mahsulot</th><th>Hajmi</th><th>Soni</th><th>Narxi</th><th>Ombor qiymati</th><th>Holat</th></tr></thead>
+                            <tbody id="stockReportTable"></tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top:15px;padding-top:15px;border-top:2px solid #e0e0e0;">
+                        <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;">
+                            <span>Umumiy ombor qiymati:</span>
+                            <span id="stockReportTotal">0 so'm</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Qarzlar Section -->
+            <div class="section" id="section-qarzlar">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="debtStatDebtors">0</div>
+                        <div class="stat-label">Qarzdorlar soni</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="debtStatOpen">0</div>
+                        <div class="stat-label">Ochiq qarzlar summasi</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="debtStatPaid">0</div>
+                        <div class="stat-label">To'langan qarzlar</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="debtStatSales">0</div>
+                        <div class="stat-label">Qarzga sotilgan savdolar</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Qarzdorlar ro'yxati</span>
+                        <button class="btn btn-success btn-sm" onclick="exportDebtCSV()">&#x1F4E5; CSV</button>
+                    </div>
+                    <div class="filter-row" id="debtTypeFilter">
+                        <button class="filter-btn active" data-dtype="all" onclick="setDebtTypeFilter('all')">Hammasi</button>
+                        <button class="filter-btn" data-dtype="organization" onclick="setDebtTypeFilter('organization')">Tashkilotlar</button>
+                        <button class="filter-btn" data-dtype="individual" onclick="setDebtTypeFilter('individual')">Shaxslar</button>
+                    </div>
+                    <div class="filter-row" id="debtStatusFilter">
+                        <button class="filter-btn active" data-dstatus="active" onclick="setDebtStatusFilter('active')">Ochiq</button>
+                        <button class="filter-btn" data-dstatus="paid" onclick="setDebtStatusFilter('paid')">To'langan</button>
+                        <button class="filter-btn" data-dstatus="all" onclick="setDebtStatusFilter('all')">Barchasi</button>
+                    </div>
+                    <div class="search-box">
+                        <span class="search-icon">&#x1F50D;</span>
+                        <input type="text" class="search-input" id="debtSearchInput" placeholder="Ism yoki tashkilot bo'yicha qidirish..." oninput="renderDebtReport()">
+                    </div>
+                    <div id="debtorReportList"></div>
+                </div>
+            </div>
+            <!-- Admin Section -->
+            <div class="section" id="section-admin">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Admin sozlamalari</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Admin PIN</label>
+                        <input type="text" class="form-input" id="adminPinSetting" maxlength="4">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveAdminPin()">Saqlash</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Payment Modal -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>&#x1F4B0; Qarz to'lash</h3>
+                <button class="modal-close" onclick="closeModal('paymentModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="paymentDebtorId">
+                <div style="background:#fff3cd;padding:15px;border-radius:8px;margin-bottom:15px;">
+                    <div style="font-size:13px;color:#856404;">Qarzdor:</div>
+                    <div style="font-weight:700;" id="paymentDebtorName"></div>
+                    <div style="font-size:14px;color:#856404;margin-top:5px;">Jami qarz: <strong id="paymentDebtorTotal"></strong></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">To'lov summasi (so'm)</label>
+                    <input type="number" class="form-input" id="paymentAmount" placeholder="Summa kiriting...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Izoh (ixtiyoriy)</label>
+                    <textarea class="form-input" id="paymentNote" placeholder="Izoh..." style="resize:vertical;min-height:60px;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success btn-block" onclick="processPayment()">To'lash</button>
+            </div>
+        </div>
+    </div>
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal" style="max-width:600px;">
+            <div class="modal-header">
+                <h3 id="detailModalTitle">Qarzdor ma'lumotlari</h3>
+                <button class="modal-close" onclick="closeModal('detailModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="detailModalBody"></div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeModal('detailModal')">Yopish</button>
+            </div>
+        </div>
+    </div>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav" id="bottomNav">
+        <div class="bottom-nav-items">
+            <div class="bottom-nav-item active" data-section="hisobot" onclick="switchSection('hisobot')">
+                <span style="font-size:20px;">&#x1F4CB;</span><span>Hisobot</span>
+            </div>
+            <div class="bottom-nav-item" data-section="zaxira" onclick="switchSection('zaxira')">
+                <span style="font-size:20px;">&#x1F4E6;</span><span>Zaxira</span>
+            </div>
+            <div class="bottom-nav-item" data-section="qarzlar" onclick="switchSection('qarzlar')">
+                <span style="font-size:20px;">&#x1F4B3;</span><span>Qarzlar</span>
+            </div>
+            <div class="bottom-nav-item" data-section="admin" onclick="switchSection('admin')">
+                <span style="font-size:20px;">&#x2699;&#xFE0F;</span><span>Admin</span>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Global State
+        let products = {};
+        let sales = {};
+        let debtors = {};
+        let debts = {};
+        let settings = { adminPin: '1234' };
+        let currentSalesPeriod = 'today';
+        let currentStockFilter = 'all';
+        let currentDebtTypeFilter = 'all';
+        let currentDebtStatusFilter = 'active';
+
+        // ==================== INITIALIZATION ====================
+        function init() {
+            const connRef = db.ref('.info/connected');
+            connRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    document.getElementById('loadingScreen').style.display = 'none';
+                    document.getElementById('loginScreen').style.display = 'flex';
+                }
+            });
+
+            db.ref('settings').on('value', (snap) => {
+                if (snap.val()) {
+                    settings = { ...settings, ...snap.val() };
+                    const el = document.getElementById('adminPinSetting');
+                    if (el) el.value = settings.adminPin || '1234';
+                }
+            });
+
+            db.ref('products').on('value', (snap) => {
+                products = snap.val() || {};
+                renderStockReport();
+                renderSalesReport();
+            });
+
+            db.ref('sales').on('value', (snap) => {
+                sales = snap.val() || {};
+                renderSalesReport();
+            });
+
+            db.ref('debtors').on('value', (snap) => {
+                debtors = snap.val() || {};
+                renderDebtReport();
+            });
+
+            db.ref('debts').on('value', (snap) => {
+                debts = snap.val() || {};
+                renderDebtReport();
+            });
+
+            setTimeout(() => {
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('loginScreen').style.display = 'flex';
+            }, 5000);
+
+            document.getElementById('pinInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') login();
+            });
+        }
+
+        // ==================== AUTH ====================
+        function login() {
+            const pin = document.getElementById('pinInput').value;
+            const errorEl = document.getElementById('loginError');
+            if (pin === (settings.adminPin || '1234')) {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+                renderSalesReport();
+                renderStockReport();
+                renderDebtReport();
+            } else {
+                errorEl.style.display = 'block';
+                document.getElementById('pinInput').value = '';
+                setTimeout(() => { errorEl.style.display = 'none'; }, 3000);
+            }
+        }
+
+        function logout() {
+            document.getElementById('appContainer').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('pinInput').value = '';
+        }
+
+        // ==================== NAVIGATION ====================
+        function switchSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            const section = document.getElementById('section-' + sectionId);
+            if (section) section.classList.add('active');
+            const tab = document.querySelector('[data-section="' + sectionId + '"].nav-tab');
+            if (tab) tab.classList.add('active');
+            document.querySelectorAll('.bottom-nav-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.section === sectionId);
+            });
+        }
+
+        // ==================== SALES REPORT ====================
+        function setSalesPeriod(period) {
+            currentSalesPeriod = period;
+            document.querySelectorAll('#salesDateFilter .filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.period === period);
+            });
+            document.getElementById('customDateRange').style.display = period === 'custom' ? 'block' : 'none';
+            if (period !== 'custom') renderSalesReport();
+        }
+
+        function getDateRange() {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            let start, end;
+
+            switch (currentSalesPeriod) {
+                case 'today':
+                    start = today.getTime();
+                    end = Date.now();
+                    break;
+                case 'yesterday':
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    start = yesterday.getTime();
+                    end = today.getTime();
+                    break;
+                case 'week':
+                    const weekAgo = new Date(today);
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    start = weekAgo.getTime();
+                    end = Date.now();
+                    break;
+                case 'month':
+                    const monthAgo = new Date(today);
+                    monthAgo.setMonth(monthAgo.getMonth() - 1);
+                    start = monthAgo.getTime();
+                    end = Date.now();
+                    break;
+                case 'all':
+                    start = 0;
+                    end = Date.now();
+                    break;
+                case 'custom':
+                    const fromEl = document.getElementById('salesDateFrom');
+                    const toEl = document.getElementById('salesDateTo');
+                    start = fromEl.value ? new Date(fromEl.value).getTime() : 0;
+                    end = toEl.value ? new Date(toEl.value).getTime() + 86400000 : Date.now();
+                    break;
+                default:
+                    start = 0;
+                    end = Date.now();
+            }
+            return { start, end };
+        }
+
+        function renderSalesReport() {
+            const { start, end } = getDateRange();
+            const tbody = document.getElementById('salesReportTable');
+            if (!tbody) return;
+
+            // Aggregate sales by product
+            const productSales = {};
+            Object.values(sales).forEach(sale => {
+                if (!sale.createdAt || sale.createdAt < start || sale.createdAt > end) return;
+                (sale.items || []).forEach(item => {
+                    const key = item.name + '|' + (item.volume || '');
+                    if (!productSales[key]) {
+                        productSales[key] = { name: item.name, volume: item.volume || '', totalQty: 0, saleCount: 0, totalAmount: 0 };
+                    }
+                    productSales[key].totalQty += item.quantity;
+                    productSales[key].totalAmount += (item.price * item.quantity);
+                    productSales[key].saleCount++;
+                });
+            });
+
+            const entries = Object.values(productSales).sort((a, b) => b.totalAmount - a.totalAmount);
+            let grandTotal = 0;
+
+            tbody.innerHTML = entries.map(p => {
+                grandTotal += p.totalAmount;
+                return '<tr><td>' + escapeHtml(p.name) + '</td><td>' + escapeHtml(p.volume) + '</td><td>' + p.totalQty + '</td><td>' + p.saleCount + '</td><td>' + formatMoney(p.totalAmount) + '</td></tr>';
+            }).join('');
+
+            if (entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray);">Ma\'lumot topilmadi</td></tr>';
+            }
+
+            document.getElementById('salesReportTotal').textContent = formatMoney(grandTotal);
+        }
+
+        function exportSalesCSV() {
+            const { start, end } = getDateRange();
+            const productSales = {};
+            Object.values(sales).forEach(sale => {
+                if (!sale.createdAt || sale.createdAt < start || sale.createdAt > end) return;
+                (sale.items || []).forEach(item => {
+                    const key = item.name + '|' + (item.volume || '');
+                    if (!productSales[key]) {
+                        productSales[key] = { name: item.name, volume: item.volume || '', totalQty: 0, saleCount: 0, totalAmount: 0 };
+                    }
+                    productSales[key].totalQty += item.quantity;
+                    productSales[key].totalAmount += (item.price * item.quantity);
+                    productSales[key].saleCount++;
+                });
+            });
+
+            let csv = 'Mahsulot,Hajmi,Sotilgan soni,Sotuv soni,Jami summa\n';
+            Object.values(productSales).forEach(p => {
+                csv += '"' + p.name + '","' + p.volume + '",' + p.totalQty + ',' + p.saleCount + ',' + p.totalAmount + '\n';
+            });
+            downloadCSV(csv, 'savdo_hisoboti.csv');
+        }
+
+        // ==================== STOCK REPORT ====================
+        function setStockFilter(filter) {
+            currentStockFilter = filter;
+            document.querySelectorAll('#stockFilter .filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.stock === filter);
+            });
+            renderStockReport();
+        }
+
+        function renderStockReport() {
+            const tbody = document.getElementById('stockReportTable');
+            if (!tbody) return;
+
+            let grandTotal = 0;
+            let html = '';
+            Object.entries(products).forEach(([id, p]) => {
+                const stock = p.stock || 0;
+                const value = stock * (p.price || 0);
+                let status, statusClass;
+
+                if (stock === 0) { status = "Bo'sh"; statusClass = 'badge-danger'; }
+                else if (stock <= 5) { status = 'Kam'; statusClass = 'badge-warning'; }
+                else { status = 'Yetarli'; statusClass = 'badge-success'; }
+
+                if (currentStockFilter === 'low' && stock > 5) return;
+                if (currentStockFilter === 'empty' && stock !== 0) return;
+                if (currentStockFilter === 'sufficient' && stock <= 5) return;
+
+                grandTotal += value;
+                html += '<tr><td>' + escapeHtml(p.name) + '</td><td>' + escapeHtml(p.volume || '-') + '</td><td>' + stock + '</td><td>' + formatMoney(p.price) + '</td><td>' + formatMoney(value) + '</td><td><span class="badge ' + statusClass + '">' + status + '</span></td></tr>';
+            });
+
+            tbody.innerHTML = html || '<tr><td colspan="6" style="text-align:center;color:var(--gray);">Mahsulotlar topilmadi</td></tr>';
+            document.getElementById('stockReportTotal').textContent = formatMoney(grandTotal);
+        }
+
+        function exportStockCSV() {
+            let csv = 'Mahsulot,Hajmi,Soni,Narxi,Ombor qiymati,Holat\n';
+            Object.entries(products).forEach(([id, p]) => {
+                const stock = p.stock || 0;
+                const value = stock * (p.price || 0);
+                let status;
+                if (stock === 0) status = "Bo'sh";
+                else if (stock <= 5) status = 'Kam';
+                else status = 'Yetarli';
+                csv += '"' + p.name + '","' + (p.volume || '-') + '",' + stock + ',' + (p.price || 0) + ',' + value + ',"' + status + '"\n';
+            });
+            downloadCSV(csv, 'zaxira_hisoboti.csv');
+        }
+
+        // ==================== DEBT REPORT ====================
+        function setDebtTypeFilter(filter) {
+            currentDebtTypeFilter = filter;
+            document.querySelectorAll('#debtTypeFilter .filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.dtype === filter);
+            });
+            renderDebtReport();
+        }
+
+        function setDebtStatusFilter(filter) {
+            currentDebtStatusFilter = filter;
+            document.querySelectorAll('#debtStatusFilter .filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.dstatus === filter);
+            });
+            renderDebtReport();
+        }
+
+        function renderDebtReport() {
+            const container = document.getElementById('debtorReportList');
+            if (!container) return;
+
+            const search = (document.getElementById('debtSearchInput')?.value || '').toLowerCase().trim();
+
+            // Calculate stats
+            let totalDebtors = new Set();
+            let openDebtSum = 0;
+            let paidDebtSum = 0;
+            let creditSalesCount = 0;
+
+            Object.entries(debts).forEach(([id, d]) => {
+                totalDebtors.add(d.debtorId);
+                if (d.status === 'active') openDebtSum += (d.remainingAmount || 0);
+                paidDebtSum += (d.paidAmount || 0);
+                creditSalesCount++;
+            });
+
+            const statDebtors = document.getElementById('debtStatDebtors');
+            const statOpen = document.getElementById('debtStatOpen');
+            const statPaid = document.getElementById('debtStatPaid');
+            const statSales = document.getElementById('debtStatSales');
+            if (statDebtors) statDebtors.textContent = totalDebtors.size;
+            if (statOpen) statOpen.textContent = formatMoney(openDebtSum);
+            if (statPaid) statPaid.textContent = formatMoney(paidDebtSum);
+            if (statSales) statSales.textContent = creditSalesCount;
+
+            // Group debts by debtor
+            const debtorDebts = {};
+            Object.entries(debts).forEach(([id, d]) => {
+                if (!debtorDebts[d.debtorId]) debtorDebts[d.debtorId] = [];
+                debtorDebts[d.debtorId].push({ id, ...d });
+            });
+
+            let html = '';
+            Object.entries(debtors).forEach(([id, debtor]) => {
+                // Type filter
+                if (currentDebtTypeFilter !== 'all' && debtor.type !== currentDebtTypeFilter) return;
+
+                const name = debtor.type === 'organization'
+                    ? debtor.organizationName + ' (' + debtor.personName + ')'
+                    : debtor.personName;
+
+                // Search filter
+                if (search && !name.toLowerCase().includes(search) && !(debtor.organizationName || '').toLowerCase().includes(search) && !(debtor.personName || '').toLowerCase().includes(search)) return;
+
+                const debtsList = debtorDebts[id] || [];
+                const activeDebts = debtsList.filter(d => d.status === 'active');
+                const paidDebts = debtsList.filter(d => d.status === 'paid');
+                const totalRemaining = debtsList.reduce((sum, d) => sum + (d.remainingAmount || 0), 0);
+                const totalPaid = debtsList.reduce((sum, d) => sum + (d.paidAmount || 0), 0);
+                const totalAmount = debtsList.reduce((sum, d) => sum + (d.amount || 0), 0);
+                const progress = totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
+
+                // Status filter
+                if (currentDebtStatusFilter === 'active' && totalRemaining <= 0 && debtsList.length > 0) return;
+                if (currentDebtStatusFilter === 'paid' && totalRemaining > 0) return;
+
+                const hasOpenDebts = totalRemaining > 0;
+                const borderColor = hasOpenDebts ? 'var(--danger)' : 'var(--success)';
+                const statusBadge = hasOpenDebts
+                    ? '<span class="badge badge-danger">Ochiq</span>'
+                    : '<span class="badge badge-success">To\'langan</span>';
+
+                html += '<div class="debtor-card" style="border-left-color:' + borderColor + ';">';
+                html += '<div class="debtor-header"><div>';
+                html += '<div class="debtor-name">' + escapeHtml(name) + '</div>';
+                html += '<div class="debtor-type">' + (debtor.type === 'organization' ? 'Tashkilot' : 'Shaxs') + ' | Login: ' + (debtor.login || '-') + ' | Tel: ' + (debtor.phone || '-') + '</div>';
+                html += '</div><div style="text-align:right;">';
+                html += '<div class="debtor-amount">' + formatMoney(totalRemaining) + '</div>';
+                html += statusBadge;
+                html += '</div></div>';
+                html += '<div class="debtor-details">Jami qarz: ' + formatMoney(totalAmount) + ' | To\'langan: ' + formatMoney(totalPaid) + ' | Qolgan: ' + formatMoney(totalRemaining) + ' | Xaridlar: ' + debtsList.length + '</div>';
+                html += '<div class="progress" style="margin-bottom:10px;"><div class="progress-bar" style="width:' + progress + '%"></div></div>';
+                html += '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
+                if (hasOpenDebts) {
+                    html += '<button class="btn btn-success btn-sm" onclick="openPaymentModal(\'' + id + '\')">&#x1F4B0; To\'lash</button>';
+                }
+                html += '<button class="btn btn-info btn-sm" onclick="showDebtorDetail(\'' + id + '\')">&#x1F4CB; Batafsil</button>';
+                if (!hasOpenDebts && debtsList.length > 0) {
+                    html += '<button class="btn btn-danger btn-sm" onclick="clearDebtorDebts(\'' + id + '\')">&#x1F5D1; O\'chirish</button>';
+                }
+                html += '</div></div>';
+            });
+
+            container.innerHTML = html || '<p style="text-align:center;color:var(--gray);padding:20px;">Qarzdorlar topilmadi</p>';
+        }
+
+        function showDebtorDetail(debtorId) {
+            const debtor = debtors[debtorId];
+            if (!debtor) return;
+
+            const name = debtor.type === 'organization'
+                ? debtor.organizationName
+                : debtor.personName;
+
+            const debtorDebtsList = Object.entries(debts)
+                .filter(([id, d]) => d.debtorId === debtorId)
+                .map(([id, d]) => ({ id, ...d }))
+                .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+            let body = '<div style="max-height:400px;overflow-y:auto;">';
+            body += '<div style="margin-bottom:15px;padding:10px;background:#f8f9fa;border-radius:8px;">';
+            body += '<strong>Login:</strong> ' + (debtor.login || '-') + '<br>';
+            body += '<strong>Telefon:</strong> ' + (debtor.phone || '-') + '<br>';
+            body += '<strong>Turi:</strong> ' + (debtor.type === 'organization' ? 'Tashkilot' : 'Shaxs') + '<br>';
+            if (debtor.organizationName) body += '<strong>Tashkilot:</strong> ' + escapeHtml(debtor.organizationName) + '<br>';
+            body += '</div>';
+
+            debtorDebtsList.forEach((d, i) => {
+                const items = (d.items || []).map(item => item.name + ' x' + item.quantity).join(', ');
+                const statusBadge = d.status === 'paid'
+                    ? '<span class="badge badge-success">To\'langan</span>'
+                    : '<span class="badge badge-danger">Ochiq</span>';
+                body += '<div class="debt-detail-row">';
+                body += '<div style="flex:1;"><strong>#' + (i + 1) + ' - ' + formatDate(d.createdAt) + '</strong> ' + statusBadge;
+                body += '<div style="font-size:12px;color:var(--gray);margin-top:3px;">' + escapeHtml(items) + '</div>';
+                if (d.personName) body += '<div style="font-size:12px;color:var(--gray);">Xaridor: ' + escapeHtml(d.personName) + '</div>';
+                body += '</div>';
+                body += '<div style="text-align:right;"><div>Summa: ' + formatMoney(d.amount) + '</div>';
+                body += '<div style="font-size:12px;">To\'langan: ' + formatMoney(d.paidAmount) + '</div>';
+                body += '<div style="font-size:12px;color:var(--danger);">Qoldi: ' + formatMoney(d.remainingAmount) + '</div></div>';
+                body += '</div>';
+            });
+            body += '</div>';
+
+            document.getElementById('detailModalTitle').textContent = name + ' - Qarzlar';
+            document.getElementById('detailModalBody').innerHTML = body;
+            openModal('detailModal');
+        }
+
+        // ==================== PAYMENT ====================
+        function openPaymentModal(debtorId) {
+            const debtor = debtors[debtorId];
+            if (!debtor) return;
+
+            const debtorDebtsList = Object.values(debts).filter(d => d.debtorId === debtorId && d.status === 'active');
+            const totalRemaining = debtorDebtsList.reduce((sum, d) => sum + (d.remainingAmount || 0), 0);
+
+            const name = debtor.type === 'organization'
+                ? debtor.organizationName + ' (' + debtor.personName + ')'
+                : debtor.personName;
+
+            document.getElementById('paymentDebtorId').value = debtorId;
+            document.getElementById('paymentDebtorName').textContent = name;
+            document.getElementById('paymentDebtorTotal').textContent = formatMoney(totalRemaining);
+            document.getElementById('paymentAmount').value = '';
+            document.getElementById('paymentNote').value = '';
+
+            openModal('paymentModal');
+        }
+
+        function processPayment() {
+            const debtorId = document.getElementById('paymentDebtorId').value;
+            let amount = parseInt(document.getElementById('paymentAmount').value) || 0;
+            const note = document.getElementById('paymentNote').value.trim();
+
+            if (amount <= 0) { showToast("To'lov summasini kiriting!", 'error'); return; }
+
+            const activeDebts = Object.entries(debts)
+                .filter(([id, d]) => d.debtorId === debtorId && d.status === 'active')
+                .map(([id, d]) => ({ id, ...d }))
+                .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+            if (activeDebts.length === 0) {
+                showToast("Bu qarzdorning ochiq qarzi yo'q!", 'error');
+                return;
+            }
+
+            // Validate: payment should not exceed total remaining debt
+            const totalRemainingDebt = activeDebts.reduce((sum, d) => sum + (d.remainingAmount || 0), 0);
+            if (amount > totalRemainingDebt) {
+                showToast("To'lov summasi qarz qoldig'idan oshib ketdi! Maksimal: " + formatMoney(totalRemainingDebt), 'error');
+                return;
+            }
+
+            let remainingPayment = amount;
+            const updates = {};
+
+            activeDebts.forEach(debt => {
+                if (remainingPayment <= 0) return;
+                const canPay = Math.min(remainingPayment, debt.remainingAmount);
+                const newPaid = (debt.paidAmount || 0) + canPay;
+                const newRemaining = debt.remainingAmount - canPay;
+                const newStatus = newRemaining <= 0 ? 'paid' : 'active';
+
+                updates['debts/' + debt.id + '/paidAmount'] = newPaid;
+                updates['debts/' + debt.id + '/remainingAmount'] = Math.max(0, newRemaining);
+                updates['debts/' + debt.id + '/status'] = newStatus;
+                updates['debts/' + debt.id + '/lastPayment'] = {
+                    amount: canPay,
+                    date: Date.now(),
+                    note: note || '',
+                    receivedBy: 'Admin'
+                };
+                remainingPayment -= canPay;
+            });
+
+            db.ref().update(updates).then(() => {
+                closeModal('paymentModal');
+                showToast(formatMoney(amount) + " to'lov qabul qilindi!", 'success');
+            }).catch(err => {
+                showToast('Xatolik: ' + err.message, 'error');
+            });
+        }
+
+        function clearDebtorDebts(debtorId) {
+            if (!confirm("Bu qarzdorning barcha to'langan qarzlarini o'chirishni xohlaysizmi?")) return;
+
+            const paidDebts = Object.entries(debts)
+                .filter(([id, d]) => d.debtorId === debtorId && d.status === 'paid');
+
+            const updates = {};
+            paidDebts.forEach(([id, d]) => {
+                updates['debts/' + id] = null;
+            });
+
+            if (Object.keys(updates).length > 0) {
+                db.ref().update(updates).then(() => {
+                    showToast("Qarzlar o'chirildi!", 'success');
+                }).catch(err => {
+                    showToast('Xatolik: ' + err.message, 'error');
+                });
+            }
+        }
+
+        function exportDebtCSV() {
+            const debtorDebts = {};
+            Object.entries(debts).forEach(([id, d]) => {
+                if (!debtorDebts[d.debtorId]) debtorDebts[d.debtorId] = [];
+                debtorDebts[d.debtorId].push(d);
+            });
+
+            let csv = 'Ism,Tashkilot,Login,Telefon,Jami qarz,To\'langan,Qolgan,Xaridlar soni,Holat\n';
+            Object.entries(debtors).forEach(([id, debtor]) => {
+                const dList = debtorDebts[id] || [];
+                const totalAmount = dList.reduce((s, d) => s + (d.amount || 0), 0);
+                const totalPaid = dList.reduce((s, d) => s + (d.paidAmount || 0), 0);
+                const totalRemaining = dList.reduce((s, d) => s + (d.remainingAmount || 0), 0);
+                const status = totalRemaining > 0 ? 'Ochiq' : "To'langan";
+                csv += '"' + (debtor.personName || '') + '","' + (debtor.organizationName || '') + '","' + (debtor.login || '') + '","' + (debtor.phone || '') + '",' + totalAmount + ',' + totalPaid + ',' + totalRemaining + ',' + dList.length + ',"' + status + '"\n';
+            });
+            downloadCSV(csv, 'qarzlar_hisoboti.csv');
+        }
+
+        // ==================== ADMIN ====================
+        function saveAdminPin() {
+            const pin = document.getElementById('adminPinSetting').value.trim();
+            if (pin.length !== 4) {
+                showToast("PIN kod 4 ta raqamdan iborat bo'lishi kerak!", 'error');
+                return;
+            }
+            db.ref('settings/adminPin').set(pin).then(() => {
+                showToast('Admin PIN saqlandi!', 'success');
+            });
+        }
+
+        // ==================== UTILITIES ====================
+        function formatMoney(amount) {
+            return (amount || 0).toLocaleString('uz-UZ') + " so'm";
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return '-';
+            const date = new Date(timestamp);
+            return date.toLocaleDateString('uz-UZ') + ' ' + date.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function showToast(message, type) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            toast.innerHTML = '<span>' + message + '</span>';
+            container.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 3000);
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        // ==================== INIT ====================
+        init();
+    </script>
+</body>
+</html>
